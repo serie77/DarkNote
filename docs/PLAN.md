@@ -40,6 +40,6 @@
 ## Video map (presentation brief: MO2 review/evaluate, MO4 reflect)
 
 1. Purpose, outcomes, impact — private notes on Solana + monetising without eroding privacy; live demo UC1–UC5 (premium unlock via mock facilitator) (~5 min)
-2. Why the approach was appropriate: x402 over accounts/cards, per-note vs credits, server-side enforcement, zero-knowledge preserved (~5 min)
+2. Why the approach was appropriate: x402 over accounts/cards, per-note vs credits, server-side enforcement, end-to-end confidentiality preserved (~5 min)
 3. Reflection: research → requirements, building on a prior project with a clean provenance boundary, Kanban under a hard timebox, what worked / what didn't (~5 min)
 4. Face on camera throughout for identification; timed dry run before recording

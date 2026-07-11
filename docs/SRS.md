@@ -26,7 +26,7 @@ The feature resolves both by introducing a **premium tier unlocked with a per-no
 | Term | Meaning |
 |---|---|
 | Note | An encrypted message stored as ciphertext, addressed to a Solana wallet |
-| Zero-knowledge (here) | The server holds only ciphertext + nonce + ephemeral pubkey; it cannot decrypt |
+| End-to-end / "zero-access" | Notes are encrypted client-side with NaCl `crypto_box` (X25519 + XSalsa20-Poly1305); the server stores only ciphertext, nonce and ephemeral public key and holds no key to decrypt. "Zero-knowledge" here means the server has zero knowledge of plaintext — **not** zero-knowledge *proofs*. |
 | Self-destruct | A note deleted after its read allowance is exhausted |
 | Free tier | Single-read, standard-size, standard-retention note — no payment |
 | Premium tier | Multi-read, larger-payload, and/or guaranteed-retention note — requires payment |
@@ -51,7 +51,7 @@ The feature resolves both by introducing a **premium tier unlocked with a per-no
 ### 2.2 Out of scope
 
 - The base darknote application: its encryption scheme, wallet key derivation, storage, reader UI (pre-existing context, §1.1).
-- Any change to the cryptography or the zero-knowledge property.
+- Any change to the cryptography or the end-to-end confidentiality property.
 - Custody of funds; the existing SOL "gift" flow (a separate third-party integration).
 - Accounts, KYC, ads, or any personal-data collection.
 - Fiat payment rails.
@@ -133,7 +133,7 @@ Priorities: **M**ust / **S**hould / **C**ould. Each traces to use case(s); verif
 **Functionality (incl. security)**
 - NFR1 — *Payment integrity:* premium capability shall be granted only after facilitator-verified settlement; the unlock shall be replay-resistant (FR5). Verified by tests covering valid, invalid, duplicate, and concurrent payments.
 - NFR2 — *Tamper resistance:* tier limits shall hold against a hostile client that inflates `maxReads`, payload size, or retention in the request body (FR6).
-- NFR3 — *Zero-knowledge preserved:* the feature shall not weaken darknote's property that the server cannot decrypt a note; payment metadata shall not be linkable to plaintext (there is none server-side).
+- NFR3 — *End-to-end confidentiality preserved:* the feature shall not weaken darknote's property that the server holds no key and cannot decrypt a note; payment metadata shall not be linkable to plaintext (there is none server-side).
 
 **Reliability**
 - NFR4 — Nonce redemption shall be atomic and consistent under concurrent requests; the same settlement shall never unlock two notes.
@@ -173,7 +173,7 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 | R2 | Facilitator unavailable in demo | possible × high | `Facilitator` interface + mock settlement; demo runs end-to-end without live value |
 | R3 | Payment-verification or replay bug grants free premium | possible × high | Adversarial tests (invalid/duplicate/concurrent); atomic SQLite nonce redemption |
 | R4 | Hostile client inflates limits | likely × med | Server-side enforcement of tier ceilings (FR6) with tamper tests |
-| R5 | Regression breaks the free path or the zero-knowledge property | possible × high | Free-path characterisation tests; the feature never touches ciphertext or keys |
+| R5 | Regression breaks the free path or the end-to-end confidentiality property | possible × high | Free-path characterisation tests; the feature never touches ciphertext or keys |
 | R6 | Real-value demo (live USDC) | certain × low | Mock facilitator on camera; author's own wallet only if a live path is shown |
 
 ---
@@ -188,7 +188,7 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 ## 9. Ethics
 
 - **No human participants, no personal data** — no primary-research ethical approval required (UWE checklist in the report appendix for completeness).
-- The feature **strengthens** the privacy posture: it monetises *without* ads, accounts, or tracking, which are the usual privacy-eroding levers. It never touches plaintext (there is none server-side) and does not weaken the zero-knowledge property (NFR3).
+- The feature **strengthens** the privacy posture: it monetises *without* ads, accounts, or tracking, which are the usual privacy-eroding levers. It never touches plaintext (there is none server-side) and does not weaken the end-to-end confidentiality property (NFR3).
 - **No custody of funds:** payment settles on-chain to the operator address via the facilitator; the app never holds balances.
 - Payments are pseudonymous on-chain. The report's ethics section notes the UK regulatory context lightly — this is a privacy/communications tool with a paid feature, not a financial product or promotion — and addresses the dual-use nature of unreadable messaging honestly (abuse-resistance via cost is part of the design rationale).
 - Error surfaces never expose internal infrastructure (FR9).
