@@ -1,0 +1,41 @@
+@startuml darknote Premium use cases
+left to right direction
+skinparam packageStyle rectangle
+
+actor Sender
+actor Recipient
+actor Operator
+actor "Machine sender" as Machine
+
+rectangle "darknote + Premium Notes" {
+  usecase "UC1 Send free note" as UC1
+  usecase "UC2 Discover premium terms" as UC2
+  usecase "UC3 Unlock premium note (x402)" as UC3
+  usecase "UC4 Enforce tier limits" as UC4
+  usecase "UC5 Guaranteed retention" as UC5
+  usecase "UC6 Read note" as UC6
+  usecase "UC7 Programmatic metered send" as UC7
+}
+
+rectangle "Browser wallet" as Wallet <<external>>
+rectangle "x402 facilitator" as Fac <<external>>
+
+Sender --> UC1
+Sender --> UC2
+Sender --> UC3
+Sender --> UC5
+Recipient --> UC6
+Operator --> UC4
+Machine --> UC7
+
+UC3 ..> UC2 : <<include>>
+UC3 ..> UC4 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC3 ..> UC5 : <<include>>
+
+UC1 --> Wallet : sign (encrypt key)
+UC3 --> Wallet : sign payment
+UC3 --> Fac : verify + settle
+UC6 --> Wallet : sign (decrypt key)
+UC7 --> Fac : verify + settle
+@enduml

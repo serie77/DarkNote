@@ -1,0 +1,40 @@
+@startuml darknote Premium architecture
+skinparam componentStyle rectangle
+
+package "darknote (Next.js app)" {
+  package "Baseline (pre-existing context)" {
+    [Send / Read UI] as UI
+    [lib/crypto.ts\n(NaCl box, key derivation)] as Crypto
+    [lib/db.ts\n(notes, keys)] as DB
+  }
+  package "Premium Notes (assessed increment)" {
+    [POST /api/notes\n(premium gate)] as Route
+    [lib/premium.ts\n(classify + enforce)] as Premium
+    [lib/x402.ts\n(terms + parse)] as X402
+    [lib/premiumStore.ts\n(atomic nonce redeem)] as Store
+    [GET /api/pricing\n(discovery)] as Pricing
+  }
+}
+
+[Browser wallet] as Wallet <<external>>
+[x402 facilitator] as Fac <<external>>
+database "SQLite\n(darknote.db)" as SQLite
+
+UI --> Crypto : encrypt in browser
+UI --> Route : create note
+Route --> Premium : classify + enforce tier
+Route --> X402 : build 402 terms / parse payment
+Route --> Fac : verify + settle (premium only)
+Route --> Store : redeem nonce (atomic, once)
+Route --> DB : create note (ciphertext only)
+Store --> SQLite
+DB --> SQLite
+UI <--> Wallet : sign
+
+note bottom of Premium
+  Assessed work. The free path is untouched
+  and never pays; only premium capability is
+  gated. Server-side enforcement — a client
+  cannot inflate limits (NFR2).
+end note
+@enduml

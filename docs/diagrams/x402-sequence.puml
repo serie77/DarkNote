@@ -1,0 +1,39 @@
+@startuml darknote premium unlock via x402
+actor Sender
+participant "Browser wallet" as Wallet
+participant "POST /api/notes" as Route
+participant "premium.ts" as Premium
+participant "x402 facilitator" as Fac
+database "premiumStore\n(SQLite)" as Store
+participant "lib/db.ts" as DB
+
+== Discover terms (UC2) ==
+Sender -> Route : POST note {maxReads:5, ...}  (no payment)
+Route -> Premium : classify()
+Premium --> Route : tier = premium
+Route -> Store : issueChallenge()
+Store --> Route : nonce
+Route --> Sender : 402 {amount, asset=USDC, network=solana, payTo, nonce}
+
+== Unlock (UC3) ==
+Sender -> Wallet : sign payment authorisation
+Sender -> Route : POST note + X-PAYMENT {nonce, ...}
+Route -> Premium : enforce premium ceilings (FR6)
+alt within ceilings
+  Route -> Fac : verifyAndSettle(payment, terms)
+  Fac --> Route : settled(txSig)  [or not]
+  alt settled
+    Route -> Store : redeem(nonce)   (atomic issued->settled)
+    alt redeemed (first use)
+      Route -> DB : createNote(premium flags, ciphertext)
+      Route --> Sender : 200 {noteId}
+    else already redeemed (replay, FR5)
+      Route --> Sender : 402 (no second note)
+    end
+  else not settled (FR4)
+    Route --> Sender : 402 (nothing created)
+  end
+else exceeds ceilings (tamper, FR6)
+  Route --> Sender : 400
+end
+@enduml
