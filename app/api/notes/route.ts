@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createNote } from '@/lib/db';
 import { PublicKey } from '@solana/web3.js';
+import { evaluatePremiumGate } from '@/lib/premiumGate';
+import { getPremiumStore } from '@/lib/premiumStore';
+import { getFacilitator } from '@/lib/facilitator';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +17,7 @@ export async function POST(request: NextRequest) {
       recipientAddress,
       selfDestruct = true,
       maxReads = null,
+      guaranteedRetention = false,
       giftAmountSol = null,
       giftTxSignature = null
     } = body;
@@ -36,20 +40,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate string lengths (prevent abuse)
-    if (ciphertext.length > 100000) {
-      return NextResponse.json(
-        { error: 'Message too large' },
-        { status: 400 }
-      );
-    }
+    // Premium gate (assessed increment): classify the request, enforce tier
+    // ceilings server-side, and require a verified x402 payment for premium
+    // capability. Free notes pass straight through, unchanged.
+    const gate = await evaluatePremiumGate({
+      body: { ciphertext, maxReads, guaranteedRetention },
+      paymentHeader: request.headers.get('x-payment'),
+      store: getPremiumStore(),
+      facilitator: getFacilitator(),
+    });
 
-    // Validate maxReads
-    if (maxReads !== null && (typeof maxReads !== 'number' || maxReads < 1 || maxReads > 1000)) {
-      return NextResponse.json(
-        { error: 'Invalid maxReads value' },
-        { status: 400 }
-      );
+    if ('status' in gate) {
+      if (gate.status === 402) {
+        return NextResponse.json(gate.terms ?? { error: gate.error }, { status: 402 });
+      }
+      return NextResponse.json({ error: gate.error }, { status: 400 });
     }
 
     // ZERO-KNOWLEDGE ASYMMETRIC: We store ciphertext + ephemeral public key
@@ -64,11 +69,13 @@ export async function POST(request: NextRequest) {
       maxReads,
       giftAmountSol,
       giftTxSignature,
+      premium: gate.premium === 1,
     });
 
     return NextResponse.json({
       success: true,
       noteId: note.id,
+      premium: gate.premium === 1,
     });
   } catch (error) {
     console.error('Error creating note:', error);

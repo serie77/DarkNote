@@ -15,6 +15,9 @@ export interface Note {
   currentReads: number;
   giftAmountSol: number | null;
   giftTxSignature: string | null;
+  // Premium feature (assessed increment): premium notes are exempt from the
+  // periodic free-note cleanup so their retention is guaranteed (FR7).
+  premium: boolean;
 }
 
 export interface RegisteredKey {
@@ -28,7 +31,8 @@ export interface RegisteredKey {
  */
 function getDb(): Database.Database {
   if (!db) {
-    const dbPath = path.join(process.cwd(), 'darknote.db');
+    // Path override lets tests run against an isolated database.
+    const dbPath = process.env.DARKNOTE_DB_PATH ?? path.join(process.cwd(), 'darknote.db');
     db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     initDb();
@@ -58,7 +62,8 @@ function initDb() {
       maxReads INTEGER,
       currentReads INTEGER NOT NULL DEFAULT 0,
       giftAmountSol REAL,
-      giftTxSignature TEXT
+      giftTxSignature TEXT,
+      premium INTEGER NOT NULL DEFAULT 0
     )
   `);
 
@@ -93,6 +98,12 @@ function initDb() {
     // Column already exists
   }
 
+  try {
+    db.exec(`ALTER TABLE notes ADD COLUMN premium INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    // Column already exists
+  }
+
   // Create index on createdAt for cleanup of old notes
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_notes_createdAt ON notes(createdAt)
@@ -117,8 +128,8 @@ export function createNote(note: Omit<Note, 'createdAt' | 'currentReads'>): Note
   const createdAt = Date.now();
 
   const stmt = db.prepare(`
-    INSERT INTO notes (id, ciphertext, nonce, ephemeralPublicKey, recipientAddress, createdAt, selfDestruct, maxReads, currentReads, giftAmountSol, giftTxSignature)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO notes (id, ciphertext, nonce, ephemeralPublicKey, recipientAddress, createdAt, selfDestruct, maxReads, currentReads, giftAmountSol, giftTxSignature, premium)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -132,7 +143,8 @@ export function createNote(note: Omit<Note, 'createdAt' | 'currentReads'>): Note
     note.maxReads ?? null,
     0,
     note.giftAmountSol ?? null,
-    note.giftTxSignature ?? null
+    note.giftTxSignature ?? null,
+    note.premium ? 1 : 0
   );
 
   return { ...note, createdAt, currentReads: 0 };
@@ -156,6 +168,7 @@ export function getNote(id: string): Note | null {
   const result: Note = {
     ...note,
     selfDestruct: note.selfDestruct === 1,
+    premium: note.premium === 1,
   };
 
   return result;
@@ -191,7 +204,8 @@ export function deleteNote(id: string): boolean {
 
 /**
  * Delete old notes (cleanup task - run periodically)
- * Deletes notes older than 30 days
+ * Deletes free notes older than 30 days. Premium notes are exempt so their
+ * retention is guaranteed (FR7 — assessed increment).
  */
 export function deleteOldNotes(maxAgeMs: number = 30 * 24 * 60 * 60 * 1000): number {
   const db = getDb();
@@ -199,7 +213,7 @@ export function deleteOldNotes(maxAgeMs: number = 30 * 24 * 60 * 60 * 1000): num
   const cutoffTime = Date.now() - maxAgeMs;
 
   const stmt = db.prepare(`
-    DELETE FROM notes WHERE createdAt < ?
+    DELETE FROM notes WHERE createdAt < ? AND premium = 0
   `);
 
   const result = stmt.run(cutoffTime);
