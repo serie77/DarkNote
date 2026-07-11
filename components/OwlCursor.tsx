@@ -24,6 +24,7 @@ interface SparkleParticle {
 
 export default function OwlCursor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dotRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: -100, y: -100, isHovering: false });
   const owlRef = useRef({ x: -100, y: -100, rotation: 0, vx: 0, vy: 0 });
   
@@ -74,17 +75,27 @@ export default function OwlCursor() {
     resize();
     window.addEventListener('resize', resize);
 
+    let lastHoverCheck = 0;
     const handleMouseMove = (e: MouseEvent) => {
       mouseRef.current.x = e.clientX;
       mouseRef.current.y = e.clientY;
 
-      // Check if hovering over interactive element
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        const isClickable = target.closest(
+      // move the pointer dot right now, straight off the mouse event. it's a GPU
+      // transform so it never waits on a canvas frame, which is what kills the
+      // laggy feeling.
+      const dot = dotRef.current;
+      if (dot) dot.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
+
+      // the closest() walk is a bit pricey to run on every single move, so only
+      // re-check the hover state ~10x a second.
+      if (e.timeStamp - lastHoverCheck > 100) {
+        lastHoverCheck = e.timeStamp;
+        const target = e.target as HTMLElement | null;
+        const isClickable = !!target?.closest(
           'a, button, input, textarea, select, [role="button"], .wallet-adapter-button, [onclick]'
         );
-        mouseRef.current.isHovering = !!isClickable;
+        mouseRef.current.isHovering = isClickable;
+        if (dot) dot.classList.toggle('owl-dot-hover', isClickable);
       }
     };
     window.addEventListener('mousemove', handleMouseMove);
@@ -184,13 +195,16 @@ export default function OwlCursor() {
 
         if (s.alpha > 0) {
           ctx.save();
+          ctx.fillStyle = s.color;
+          // cheap glow: a bigger, fainter circle behind the sparkle. way lighter
+          // than ctx.shadowBlur, which was tanking the frame rate.
+          ctx.globalAlpha = s.alpha * 0.22;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size * 2.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = s.alpha;
           ctx.beginPath();
           ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-          ctx.fillStyle = s.color;
-          ctx.globalAlpha = s.alpha;
-          // Add neon glow to sparkles
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = s.color;
           ctx.fill();
           ctx.restore();
         }
@@ -204,43 +218,8 @@ export default function OwlCursor() {
       const owlOffsetY = 12;
       drawOwl(ctx, owl.x + owlOffsetX, owl.y + owlOffsetY, owlSize, 0.95, owl.rotation);
 
-      // Draw active pointer dot exactly at mouse position
-      if (mouse.x !== -100) {
-        ctx.save();
-        ctx.translate(mouse.x, mouse.y);
-
-        if (mouse.isHovering) {
-          // Hover Ring: Expands into a nice ring
-          ctx.beginPath();
-          ctx.arc(0, 0, 8, 0, Math.PI * 2);
-          ctx.strokeStyle = 'rgba(168, 130, 255, 0.9)'; // Neon purple
-          ctx.lineWidth = 1.5;
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = 'rgba(168, 130, 255, 0.8)';
-          ctx.stroke();
-
-          // Inner dot
-          ctx.beginPath();
-          ctx.arc(0, 0, 2, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
-        } else {
-          // Regular dot: Tiny purple glowing circle
-          ctx.beginPath();
-          ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
-          ctx.fillStyle = '#a882ff'; // Purple
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = '#a882ff';
-          ctx.fill();
-
-          // Small white center core
-          ctx.beginPath();
-          ctx.arc(0, 0, 1.2, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
-        }
-        ctx.restore();
-      }
+      // the pointer dot itself is a DOM element moved in handleMouseMove, so we
+      // don't draw it on the canvas anymore.
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
@@ -255,17 +234,20 @@ export default function OwlCursor() {
   }, [drawOwl]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: 9999,
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: 9999,
+        }}
+      />
+      <div ref={dotRef} className="owl-dot" aria-hidden="true" />
+    </>
   );
 }
