@@ -224,6 +224,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [selfDestruct, setSelfDestruct] = useState(false);
   const [maxReads, setMaxReads] = useState<number | null>(null);
+  const [guaranteedRetention, setGuaranteedRetention] = useState(false);
   const [hasEncryptionKey, setHasEncryptionKey] = useState<boolean | null>(null);
   const [checkingKey, setCheckingKey] = useState(false);
   const [giftEnabled, setGiftEnabled] = useState(false);
@@ -616,21 +617,48 @@ export default function Home() {
       const encrypted = encryptMessage(message, x25519PublicKey);
       const noteId = generateNoteId();
 
-      const response = await fetch('/api/notes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: noteId,
-          ...encrypted,
-          recipientAddress,
-          selfDestruct,
-          maxReads,
-          giftAmountSol,
-          giftTxSignature,
-        }),
-      });
+      const notePayload = {
+        id: noteId,
+        ...encrypted,
+        recipientAddress,
+        selfDestruct,
+        maxReads,
+        guaranteedRetention,
+        giftAmountSol,
+        giftTxSignature,
+      };
+
+      const postNote = (paymentHeader?: string) =>
+        fetch('/api/notes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(paymentHeader ? { 'X-PAYMENT': paymentHeader } : {}),
+          },
+          body: JSON.stringify(notePayload),
+        });
+
+      let response = await postNote();
+
+      // Premium capability (multi-read, larger payload, guaranteed retention)
+      // is unlocked with an x402 micropayment. On a 402 challenge, settle it and
+      // retry with the payment. The demo settles against the mock facilitator;
+      // a production build swaps in a real x402 client that signs a USDC
+      // transfer from the connected wallet.
+      if (response.status === 402) {
+        const terms = (await response.clone().json())?.accepts?.[0];
+        if (terms) {
+          const paymentHeader = btoa(
+            JSON.stringify({
+              nonce: terms.nonce,
+              amount: terms.amount,
+              valid: true,
+              payer: publicKey?.toBase58(),
+            })
+          );
+          response = await postNote(paymentHeader);
+        }
+      }
 
       if (!response.ok) {
         const data = await response.json();
@@ -644,6 +672,7 @@ export default function Home() {
       setEmoteOpen(false);
       setEmoteSection(EMOTE_SECTIONS[0].label);
       setRecipientAddress('');
+      setGuaranteedRetention(false);
       setGiftAmount('');
       setGiftEnabled(false);
             setGiftStep('idle');
@@ -968,6 +997,32 @@ export default function Home() {
                       </p>
                     </div>
                   )}
+                </div>
+
+                {/* Premium: Guaranteed Retention (unlocked via x402) */}
+                <div className="mb-5 p-4 bg-black/30 border border-zinc-800 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-medium text-gray-400 flex items-center gap-2">
+                      <span>⭐</span> Guaranteed retention
+                      <span className="text-[10px] font-semibold text-purple-400 tracking-wide">PREMIUM</span>
+                    </label>
+                    <button
+                      onClick={() => setGuaranteedRetention(!guaranteedRetention)}
+                      className={`relative w-11 h-6 rounded-full transition ${
+                        guaranteedRetention ? 'bg-purple-500' : 'bg-zinc-700'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ${
+                          guaranteedRetention ? 'translate-x-5' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Premium notes — multi-read, large, or guaranteed-retention — unlock with a small
+                    on-chain micropayment (x402) when you create them. Ordinary notes stay free.
+                  </p>
                 </div>
 
                 {/* Attach SOL Gift */}
