@@ -2,13 +2,13 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { newNonce } from './x402';
 
-/**
- * Records premium-payment challenges and their single redemption.
- *
- * Nonce redemption runs inside a synchronous better-sqlite3 transaction, which
- * completes without yielding the event loop — so concurrent requests cannot
- * interleave, and a settlement can unlock exactly one premium note (FR5, NFR4).
- */
+// keeps track of premium-payment challenges and makes sure each one can only be
+// cashed in once.
+//
+// the redeem runs inside a synchronous better-sqlite3 transaction, and because
+// that goes start-to-finish without handing the event loop back, two requests
+// can't interleave halfway through it. so one settlement unlocks exactly one
+// note, which is the property i actually care about here (FR5, NFR4).
 export class PremiumStore {
   private db: Database.Database;
   private redeemTxn: (nonce: string) => { ok: boolean; amount?: number };
@@ -37,7 +37,7 @@ export class PremiumStore {
     });
   }
 
-  /** Issue a challenge nonce for a premium price. */
+  // hand out a fresh challenge nonce for a given price.
   issueChallenge(amount: number, now = Date.now()): string {
     const nonce = newNonce();
     this.db
@@ -46,10 +46,9 @@ export class PremiumStore {
     return nonce;
   }
 
-  /**
-   * Atomically consume a challenge. Returns ok only the first time a valid,
-   * issued nonce is redeemed; a replay or an unknown nonce returns ok:false.
-   */
+  // burn a challenge nonce, atomically. you only get ok:true the first time a
+  // real, still-open nonce is redeemed. replay it or make one up and it's
+  // ok:false.
   redeem(nonce: string): { ok: boolean; amount?: number } {
     return this.redeemTxn(nonce);
   }

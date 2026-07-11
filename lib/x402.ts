@@ -1,12 +1,9 @@
 import { randomUUID } from 'crypto';
 
-/**
- * x402 helpers for the premium-note unlock (assessed feature).
- *
- * The premium path answers an unpaid request with HTTP 402 and a machine-
- * readable "accepts" envelope (scheme/network/asset/amount/payTo) plus a nonce
- * that binds a payment to one unlock (FR3, NFR5).
- */
+// little helpers for the x402 side of unlocking a premium note.
+// when someone hasn't paid yet we answer with a 402 plus a machine-readable
+// "accepts" blob (scheme/network/asset/amount/payTo) and a nonce that ties a
+// payment to exactly one unlock (FR3, NFR5).
 
 export const X402_CONFIG = {
   asset: 'USDC',
@@ -53,7 +50,8 @@ export interface ParsedPayment {
   payer?: string;
 }
 
-/** Parse the base64-encoded JSON X-PAYMENT header; null on any malformation. */
+// pull the payment out of the base64 JSON X-PAYMENT header. returns null if
+// it's missing or malformed, so a bad header just turns into a clean 402.
 export function parsePaymentHeader(header: string | null | undefined): ParsedPayment | null {
   if (!header || typeof header !== 'string') return null;
   try {

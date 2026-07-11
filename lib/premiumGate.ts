@@ -3,18 +3,16 @@ import { challengeTerms, parsePaymentHeader, type PaymentTerms } from './x402';
 import type { Facilitator } from './facilitator';
 import type { PremiumStore } from './premiumStore';
 
-/**
- * Decides whether a note-creation request may proceed, and at which tier.
- *
- * This is the security-critical orchestration, kept as one pure, injectable
- * function so it is fully unit-testable without the Next.js runtime or a live
- * facilitator. The route handler is a thin wrapper around it.
- *
- * Returns one of:
- *   { action: 'create', premium }        -> create the note (premium 0 or 1)
- *   { status: 402, terms?, error? }      -> payment required / not verified
- *   { status: 400, error }               -> request beyond premium ceilings
- */
+// works out whether a note can go through, and at which tier.
+//
+// this is the security-sensitive bit, so i kept it as one pure function with
+// its deps injected. that way i can unit-test it to death without spinning up
+// Next or a real facilitator, and the route handler just wraps it.
+//
+// it hands back one of:
+//   { action: 'create', premium }   -> go ahead and create the note
+//   { status: 402, terms?, error? } -> needs payment / payment didn't check out
+//   { status: 400, error }          -> asked for more than premium allows
 export type GateDecision =
   | { action: 'create'; premium: 0 | 1 }
   | { status: 402; terms?: PaymentTerms; error?: string }
@@ -37,19 +35,19 @@ export async function evaluatePremiumGate({
 
   if (tier === 'free') {
     const check = enforce(body, 'free');
-    // A free-classified request is within free limits by construction; this is
-    // defence in depth.
+    // if it's free it's already inside the free limits, so this is just
+    // belt-and-braces.
     if (!check.ok) return { status: 400, error: check.error! };
-    return { action: 'create', premium: 0 }; // FR2: no payment on the free path
+    return { action: 'create', premium: 0 }; // FR2: free notes never pay
   }
 
-  // Premium: bound the request before taking any payment (FR6 / NFR2).
+  // premium: cap the request BEFORE we take any money (FR6 / NFR2).
   const ceilings = enforce(body, 'premium');
   if (!ceilings.ok) return { status: 400, error: ceilings.error! };
 
   const price = priceFor(body);
 
-  // FR3: no payment yet -> issue a challenge nonce and return 402 terms.
+  // FR3: nobody's paid yet, so mint a challenge nonce and hand back the 402.
   if (!paymentHeader) {
     const nonce = store.issueChallenge(price);
     return { status: 402, terms: challengeTerms(nonce, price) };
@@ -61,14 +59,14 @@ export async function evaluatePremiumGate({
     return { status: 402, terms: challengeTerms(nonce, price), error: 'Invalid payment.' };
   }
 
-  // FR4: settlement must be facilitator-verified before anything is granted.
+  // FR4: the facilitator has to confirm settlement before we hand anything over.
   const settlement = await facilitator.verifyAndSettle(payment, { nonce: payment.nonce, amount: price });
   if (!settlement.settled) {
     return { status: 402, error: 'Payment could not be verified.' };
   }
 
-  // FR5: consume the nonce atomically — a replay or an unknown nonce unlocks
-  // nothing, so one settlement creates at most one premium note.
+  // FR5: burn the nonce atomically. replay it or make one up and it unlocks
+  // nothing, so one payment can only ever make one premium note.
   const redeemed = store.redeem(payment.nonce);
   if (!redeemed.ok) {
     return { status: 402, error: 'Payment already used or unrecognised.' };

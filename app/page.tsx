@@ -34,6 +34,8 @@ const GIFT_STEPS: { key: GiftStep; label: string; hint: string }[] = [
 const FREE_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGE_LENGTH = 10000; // premium (x402) raises the free 2,000-char limit
 const GIF_LIKE = /(https?:\/\/\S+\.(?:gif|png|jpe?g|webp))|tenor\.com|giphy\.com/i;
+// mock by default. set NEXT_PUBLIC_X402_MODE=devnet to pay real (faucet) USDC.
+const CLIENT_X402_MODE = process.env.NEXT_PUBLIC_X402_MODE === 'devnet' ? 'devnet' : 'mock';
 const EMOTE_SECTIONS = [
   {
     label: 'Smileys',
@@ -212,7 +214,7 @@ function GiftProgress({ step, elapsedSec }: { step: GiftStep; elapsedSec: number
 
 export default function Home() {
   const { connection } = useConnection();
-  const { publicKey, signMessage, connected, sendTransaction } = useWallet();
+  const { publicKey, signMessage, signTransaction, connected, sendTransaction } = useWallet();
   const [message, setMessage] = useState('');
   const [emoteOpen, setEmoteOpen] = useState(false);
   const [emoteCategoryOpen, setEmoteCategoryOpen] = useState(false);
@@ -418,8 +420,8 @@ export default function Home() {
 
 
   const hasGifLink = GIF_LIKE.test(message);
-  // A note is premium (and needs an x402 payment) if it exceeds the free
-  // message length, attaches a GIF, is multi-read, or asks for guaranteed
+  // a note is premium (so it needs an x402 payment) if it's over the free
+  // message length, has a gif in it, is multi-read, or wants guaranteed
   // retention.
   const isPremiumNote =
     guaranteedRetention ||
@@ -445,10 +447,10 @@ export default function Home() {
       body: JSON.stringify(payload),
     });
 
-  // Build an x402 payment payload. Shaped to mirror a real x402 payment so
-  // swapping the mock facilitator for a live one needs no restructuring: the
-  // demo marks the payment valid; a production build replaces `authorization`
-  // and `valid` with a wallet-signed USDC transfer.
+  // build an x402 payment payload. i shaped it like a real x402 payment so
+  // swapping the mock facilitator for a live one doesn't need a rewrite: the
+  // demo just marks it valid, a real build would replace authorization/valid
+  // with a wallet-signed USDC transfer.
   const buildX402Payment = (terms: { nonce: string; amount: number; network: string }) =>
     btoa(
       JSON.stringify({
@@ -715,10 +717,38 @@ export default function Home() {
         giftTxSignature,
       };
 
+      // devnet mode: let the x402 client sign a real (faucet) USDC transfer and
+      // retry for us. no mock panel here, the wallet pops up to approve.
+      if (isPremiumNote && CLIENT_X402_MODE === 'devnet') {
+        if (!publicKey || !signTransaction) {
+          throw new Error('Connect a wallet to pay for a premium note.');
+        }
+        const { createX402Client } = await import('x402-solana/client');
+        const client = createX402Client({
+          wallet: {
+            publicKey: { toString: () => publicKey.toString() },
+            signTransaction,
+          },
+          network: 'solana-devnet',
+          rpcUrl: 'https://api.devnet.solana.com',
+        });
+        const paid = await client.fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notePayload),
+        });
+        if (!paid.ok) {
+          const d = await paid.json().catch(() => ({}));
+          throw new Error(d.error || 'Payment could not be completed');
+        }
+        finishNote(noteId);
+        return;
+      }
+
       const response = await postNote(notePayload);
 
-      // Premium notes require an x402 micropayment. Rather than pay silently,
-      // surface the x402 terms so the sender completes payment explicitly.
+      // premium notes need an x402 payment. instead of paying silently, show
+      // the terms so the sender actually has to click pay.
       if (response.status === 402) {
         const terms = (await response.json())?.accepts?.[0];
         if (terms) {

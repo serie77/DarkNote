@@ -1,10 +1,8 @@
 import type { ParsedPayment } from './x402';
 
-/**
- * Payment verification/settlement behind a swappable interface (NFR8), so the
- * premium gate never depends on a concrete facilitator and the test suite and
- * demo can run without moving real value on-chain.
- */
+// payment verify/settle sits behind a swappable interface (NFR8), so the gate
+// doesn't care which facilitator is behind it. that's the whole trick that lets
+// the tests and the demo run without moving real money.
 export interface SettlementTerms {
   nonce: string;
   amount: number;
@@ -19,12 +17,10 @@ export interface Facilitator {
   verifyAndSettle(payment: ParsedPayment, terms: SettlementTerms): Promise<Settlement>;
 }
 
-/**
- * Mock facilitator for tests and the recorded demo. Treats a payment as settled
- * only when it is marked valid, targets the challenged nonce, and pays at least
- * the required amount — mirroring a real facilitator's acceptance checks so the
- * gate logic is exercised faithfully.
- */
+// mock facilitator for the tests and the demo. it only counts a payment as
+// settled if it's marked valid, points at the nonce we challenged with, and
+// pays at least the amount we asked for, roughly the same checks a real
+// facilitator does, so the gate still gets exercised properly.
 export class MockFacilitator implements Facilitator {
   async verifyAndSettle(payment: ParsedPayment, terms: SettlementTerms): Promise<Settlement> {
     if (payment.valid !== true) return { settled: false };
@@ -34,7 +30,8 @@ export class MockFacilitator implements Facilitator {
   }
 }
 
-/** Real facilitator adapter; network/verification failure => not settled. */
+// real facilitator adapter. if the network call or verification fails we just
+// treat it as not settled.
 export class HttpFacilitator implements Facilitator {
   constructor(private readonly url: string) {}
   async verifyAndSettle(payment: ParsedPayment, terms: SettlementTerms): Promise<Settlement> {

@@ -1,10 +1,7 @@
-/**
- * Premium tier policy for darknote notes (assessed feature).
- *
- * A note-creation request is classified free or premium from the capabilities
- * it asks for, and premium requests are bounded by hard ceilings the server
- * enforces regardless of what the client sends (FR1, FR6, NFR2).
- */
+// premium tier policy for darknote notes (this is the new bit i built).
+// a note comes out free or premium depending on what it asks for, and the
+// premium ones get capped by hard ceilings the server enforces no matter what
+// the client sends (FR1, FR6, NFR2).
 
 export type Tier = 'free' | 'premium';
 
@@ -50,7 +47,7 @@ const wantsRetention = (req: NoteCapabilities): boolean => req.guaranteedRetenti
 
 const explicitlyPremium = (req: NoteCapabilities): boolean => req.premiumRequested === true;
 
-/** FR1: a request is premium iff it asks for any capability above the free tier. */
+// FR1: a note is premium if it asks for anything above the free tier.
 export function classify(req: NoteCapabilities): Tier {
   return wantsMultiRead(req) || wantsLargePayload(req) || wantsRetention(req) || explicitlyPremium(req)
     ? 'premium'
@@ -62,11 +59,10 @@ export interface EnforceResult {
   error?: string;
 }
 
-/**
- * FR6 / NFR2: enforce tier ceilings server-side. Free requests must sit within
- * free limits; premium requests must not exceed premium ceilings. A hostile
- * client that inflates values in the body is bounded here, not trusted.
- */
+// FR6 / NFR2: enforce the tier ceilings on the server. free notes have to stay
+// inside the free limits, premium ones can't blow past the premium ceilings. if
+// a client tries to inflate the numbers in the body we catch it here instead of
+// trusting it.
 export function enforce(req: NoteCapabilities, tier: Tier): EnforceResult {
   const len = ciphertextLength(req);
   if (tier === 'free') {
@@ -84,7 +80,7 @@ export function enforce(req: NoteCapabilities, tier: Tier): EnforceResult {
   return { ok: true };
 }
 
-/** FR10: price a premium request from the specific capabilities requested. */
+// FR10: work out the price from whatever capabilities the note actually uses.
 export function priceFor(req: NoteCapabilities): number {
   let price = PRICING.baseUsdc;
   if (typeof req.maxReads === 'number' && req.maxReads > 10) price += PRICING.manyReadsUsdc;
