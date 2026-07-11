@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-roboto-mono);
+  --font-display: var(--font-orbitron);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+  background-attachment: fixed;
+  color: #ffffff;
+  font-family: var(--font-roboto-mono), 'Roboto Mono', monospace;
+  overflow: hidden;
+}
+
+/* Hide scrollbars */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes gridMove {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(-60px, -60px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes giftSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+/* Custom wallet button styles */
+.wallet-adapter-button {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  font-family: var(--font-roboto-mono), 'Roboto Mono', monospace !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.wallet-adapter-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.wallet-adapter-button-trigger {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Custom owl cursor */
+* {
+  cursor: none !important;
+}
+
+/* Keep pointer on interactive elements but still hidden in favor of owl */
+a, button, input, textarea, select, [role="button"], .wallet-adapter-button {
+  cursor: none !important;
+}
