@@ -31,7 +31,9 @@ const GIFT_STEPS: { key: GiftStep; label: string; hint: string }[] = [
   { key: 'delivering', label: 'Delivering via SplitNow', hint: 'SplitNow is forwarding SOL to the recipient' },
   { key: 'delivered', label: 'Gift delivered', hint: 'Funds have reached the recipient' },
 ];
-const MAX_MESSAGE_LENGTH = 2000;
+const FREE_MESSAGE_LENGTH = 2000;
+const MAX_MESSAGE_LENGTH = 10000; // premium (x402) raises the free 2,000-char limit
+const GIF_LIKE = /(https?:\/\/\S+\.(?:gif|png|jpe?g|webp))|tenor\.com|giphy\.com/i;
 const EMOTE_SECTIONS = [
   {
     label: 'Smileys',
@@ -225,6 +227,11 @@ export default function Home() {
   const [selfDestruct, setSelfDestruct] = useState(false);
   const [maxReads, setMaxReads] = useState<number | null>(null);
   const [guaranteedRetention, setGuaranteedRetention] = useState(false);
+  const [payModal, setPayModal] = useState<{
+    terms: { nonce: string; amount: number; network: string; asset: string; payTo: string };
+    noteId: string;
+    notePayload: Record<string, unknown>;
+  } | null>(null);
   const [hasEncryptionKey, setHasEncryptionKey] = useState<boolean | null>(null);
   const [checkingKey, setCheckingKey] = useState(false);
   const [giftEnabled, setGiftEnabled] = useState(false);
@@ -409,6 +416,85 @@ export default function Home() {
 
 
 
+
+  const hasGifLink = GIF_LIKE.test(message);
+  // A note is premium (and needs an x402 payment) if it exceeds the free
+  // message length, attaches a GIF, is multi-read, or asks for guaranteed
+  // retention.
+  const isPremiumNote =
+    guaranteedRetention ||
+    (selfDestruct && (maxReads ?? 1) > 1) ||
+    message.length > FREE_MESSAGE_LENGTH ||
+    hasGifLink;
+
+  const premiumReasons = [
+    message.length > FREE_MESSAGE_LENGTH ? 'long message' : null,
+    hasGifLink ? 'GIF attached' : null,
+    selfDestruct && (maxReads ?? 1) > 1 ? 'multi-read' : null,
+    guaranteedRetention ? 'guaranteed retention' : null,
+  ].filter(Boolean);
+  const premiumReasonText = premiumReasons.length ? `Includes ${premiumReasons.join(', ')}.` : '';
+
+  const postNote = (payload: Record<string, unknown>, paymentHeader?: string) =>
+    fetch('/api/notes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(paymentHeader ? { 'X-PAYMENT': paymentHeader } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+  // Build an x402 payment payload. Shaped to mirror a real x402 payment so
+  // swapping the mock facilitator for a live one needs no restructuring: the
+  // demo marks the payment valid; a production build replaces `authorization`
+  // and `valid` with a wallet-signed USDC transfer.
+  const buildX402Payment = (terms: { nonce: string; amount: number; network: string }) =>
+    btoa(
+      JSON.stringify({
+        x402Version: 1,
+        scheme: 'exact',
+        network: terms.network,
+        payload: { nonce: terms.nonce, payer: publicKey?.toBase58(), authorization: 'mock' },
+        nonce: terms.nonce,
+        amount: terms.amount,
+        payer: publicKey?.toBase58(),
+        valid: true,
+      })
+    );
+
+  const finishNote = (noteId: string) => {
+    setNoteUrl(`${window.location.origin}/note/${noteId}`);
+    setMessage('');
+    setEmoteOpen(false);
+    setEmoteSection(EMOTE_SECTIONS[0].label);
+    setRecipientAddress('');
+    setGuaranteedRetention(false);
+    setSelfDestruct(false);
+    setMaxReads(null);
+    setGiftAmount('');
+    setGiftEnabled(false);
+    setGiftStep('idle');
+    setPayModal(null);
+  };
+
+  const payAndComplete = async () => {
+    if (!payModal) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await postNote(payModal.notePayload, buildX402Payment(payModal.terms));
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Payment could not be completed');
+      }
+      finishNote(payModal.noteId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Payment could not be completed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateNote = async () => {
     setError('');
@@ -624,39 +710,21 @@ export default function Home() {
         selfDestruct,
         maxReads,
         guaranteedRetention,
+        premiumRequested: isPremiumNote,
         giftAmountSol,
         giftTxSignature,
       };
 
-      const postNote = (paymentHeader?: string) =>
-        fetch('/api/notes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(paymentHeader ? { 'X-PAYMENT': paymentHeader } : {}),
-          },
-          body: JSON.stringify(notePayload),
-        });
+      const response = await postNote(notePayload);
 
-      let response = await postNote();
-
-      // Premium capability (multi-read, larger payload, guaranteed retention)
-      // is unlocked with an x402 micropayment. On a 402 challenge, settle it and
-      // retry with the payment. The demo settles against the mock facilitator;
-      // a production build swaps in a real x402 client that signs a USDC
-      // transfer from the connected wallet.
+      // Premium notes require an x402 micropayment. Rather than pay silently,
+      // surface the x402 terms so the sender completes payment explicitly.
       if (response.status === 402) {
-        const terms = (await response.clone().json())?.accepts?.[0];
+        const terms = (await response.json())?.accepts?.[0];
         if (terms) {
-          const paymentHeader = btoa(
-            JSON.stringify({
-              nonce: terms.nonce,
-              amount: terms.amount,
-              valid: true,
-              payer: publicKey?.toBase58(),
-            })
-          );
-          response = await postNote(paymentHeader);
+          setPayModal({ terms, noteId, notePayload });
+          setLoading(false);
+          return;
         }
       }
 
@@ -665,17 +733,7 @@ export default function Home() {
         throw new Error(data.error || 'Failed to create note');
       }
 
-      const url = `${window.location.origin}/note/${noteId}`;
-      setNoteUrl(url);
-
-      setMessage('');
-      setEmoteOpen(false);
-      setEmoteSection(EMOTE_SECTIONS[0].label);
-      setRecipientAddress('');
-      setGuaranteedRetention(false);
-      setGiftAmount('');
-      setGiftEnabled(false);
-            setGiftStep('idle');
+      finishNote(noteId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note');
     } finally {
@@ -914,8 +972,8 @@ export default function Home() {
                       className="w-full px-4 py-3 pr-32 bg-black/50 border border-zinc-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 resize-none transition text-sm"
                     />
                     <div className="absolute top-3 right-3 flex items-center gap-2">
-                      <p className="text-[11px] text-gray-500 tabular-nums">
-                        {message.length}/{MAX_MESSAGE_LENGTH}
+                      <p className={`text-[11px] tabular-nums ${message.length > FREE_MESSAGE_LENGTH ? 'text-purple-300' : 'text-gray-500'}`}>
+                        {message.length}/{message.length > FREE_MESSAGE_LENGTH ? MAX_MESSAGE_LENGTH : FREE_MESSAGE_LENGTH}
                       </p>
                       <div className="relative">
                         <button
@@ -1020,7 +1078,7 @@ export default function Home() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Premium notes — multi-read, large, or guaranteed-retention — unlock with a small
+                    Premium notes (multi-read, large, or guaranteed-retention) unlock with a small
                     on-chain micropayment (x402) when you create them. Ordinary notes stay free.
                   </p>
                 </div>
@@ -1083,18 +1141,83 @@ export default function Home() {
                   </div>
                 )}
 
+                {/* Premium indicator */}
+                {isPremiumNote && !payModal && (
+                  <div className="mb-4 p-3 rounded-lg border border-purple-500/40 bg-purple-500/10 text-xs text-purple-200">
+                    <span className="font-semibold">Premium note.</span> {premiumReasonText} Unlocking it takes a one-time x402 micropayment.
+                  </div>
+                )}
+
+                {/* x402 payment panel */}
+                {payModal && (
+                  <div className="mb-5 p-4 rounded-lg border border-purple-500/50 bg-black/60">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold text-purple-200">Pay with x402</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        HTTP 402
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mb-3">
+                      This premium note is unlocked with an on-chain micropayment.
+                    </p>
+                    <div className="rounded-md bg-black/50 border border-zinc-800 p-3 text-xs font-mono text-gray-300 space-y-1 mb-3">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500">amount</span>
+                        <span>{payModal.terms.amount} {payModal.terms.asset}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500">network</span>
+                        <span>{payModal.terms.network}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500">pay to</span>
+                        <span className="truncate">{payModal.terms.payTo}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500">nonce</span>
+                        <span className="truncate">{payModal.terms.nonce}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={payAndComplete}
+                        disabled={loading}
+                        className="flex-1 py-2.5 bg-purple-500 hover:bg-purple-400 text-white text-sm font-medium rounded-md transition disabled:opacity-50"
+                      >
+                        {loading
+                          ? 'Settling payment...'
+                          : `Pay ${payModal.terms.amount} ${payModal.terms.asset} and send`}
+                      </button>
+                      <button
+                        onClick={() => setPayModal(null)}
+                        disabled={loading}
+                        className="px-4 py-2.5 border border-zinc-700 text-gray-400 text-sm rounded-md hover:text-white transition disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] text-gray-600">
+                      Mock facilitator, no real funds move. A live x402 facilitator settles real USDC with no code change.
+                    </p>
+                  </div>
+                )}
+
                 {/* Create Button */}
-                <button
-                  onClick={handleCreateNote}
-                  disabled={loading}
-                  className="w-full py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                                    {loading
-                    ? (giftStep !== 'idle'
-                        ? (GIFT_STEPS.find((s) => s.key === giftStep)?.label ?? 'Sending gift...')
-                        : 'Creating encrypted note...')
-                    : (giftEnabled && giftAmount ? `Create Note + Send ${giftAmount} SOL` : 'Create Encrypted Note')}
-                </button>
+                {!payModal && (
+                  <button
+                    onClick={handleCreateNote}
+                    disabled={loading}
+                    className="w-full py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {loading
+                      ? (giftStep !== 'idle'
+                          ? (GIFT_STEPS.find((s) => s.key === giftStep)?.label ?? 'Sending gift...')
+                          : 'Creating encrypted note...')
+                      : isPremiumNote
+                        ? 'Continue to x402 payment'
+                        : (giftEnabled && giftAmount ? `Create Note + Send ${giftAmount} SOL` : 'Create Encrypted Note')}
+                  </button>
+                )}
               </>
             ) : (
               <>

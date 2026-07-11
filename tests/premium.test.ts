@@ -14,6 +14,10 @@ describe('classify (FR1)', () => {
     expect(classify({ ciphertext: big(TIER_LIMITS.free.maxCiphertextChars + 1) })).toBe('premium');
     expect(classify({ guaranteedRetention: true })).toBe('premium');
   });
+
+  it('treats an explicit premium request as premium (e.g. GIF attached, long message)', () => {
+    expect(classify({ ciphertext: 'hi', premiumRequested: true })).toBe('premium');
+  });
 });
 
 describe('enforce ceilings (FR6, NFR2)', () => {

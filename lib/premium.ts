@@ -12,15 +12,21 @@ export interface NoteCapabilities {
   ciphertext?: string;
   maxReads?: number | null;
   guaranteedRetention?: boolean;
+  // The client can opt a note into premium explicitly (e.g. for an attached
+  // GIF or a long message). This can only ever make a note cost more, never
+  // less, so it is safe to trust: the server still independently forces premium
+  // on oversized ciphertext, multi-read and retention.
+  premiumRequested?: boolean;
 }
 
 export const TIER_LIMITS = {
   free: {
     maxReads: 1,
-    maxCiphertextChars: 5_000,
+    // Roughly a 2,000-character plaintext message once encrypted and base64'd.
+    maxCiphertextChars: 3_000,
   },
   premium: {
-    // Hard ceilings — a request beyond these is rejected even if paid.
+    // Hard ceilings, a request beyond these is rejected even if paid.
     maxReads: 1_000,
     maxCiphertextChars: 100_000,
   },
@@ -42,9 +48,13 @@ const wantsLargePayload = (req: NoteCapabilities): boolean =>
   ciphertextLength(req) > TIER_LIMITS.free.maxCiphertextChars;
 const wantsRetention = (req: NoteCapabilities): boolean => req.guaranteedRetention === true;
 
+const explicitlyPremium = (req: NoteCapabilities): boolean => req.premiumRequested === true;
+
 /** FR1: a request is premium iff it asks for any capability above the free tier. */
 export function classify(req: NoteCapabilities): Tier {
-  return wantsMultiRead(req) || wantsLargePayload(req) || wantsRetention(req) ? 'premium' : 'free';
+  return wantsMultiRead(req) || wantsLargePayload(req) || wantsRetention(req) || explicitlyPremium(req)
+    ? 'premium'
+    : 'free';
 }
 
 export interface EnforceResult {

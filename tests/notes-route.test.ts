@@ -69,6 +69,12 @@ describe('POST /api/notes premium gate (FR2, FR3, FR9)', () => {
     expect(body.accepts[0].nonce).toBeTruthy();
   });
 
+  it('honours an explicit premiumRequested flag from the client (GIF / long message)', async () => {
+    const res = await post(noteBody({ premiumRequested: true }));
+    expect(res.status).toBe(402);
+    expect((await res.json()).accepts[0].nonce).toBeTruthy();
+  });
+
   it('creates a premium note after a verified payment', async () => {
     const challenge = await (await post(noteBody({ maxReads: 5 }))).json();
     const term = challenge.accepts[0];

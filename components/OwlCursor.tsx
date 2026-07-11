@@ -109,7 +109,7 @@ export default function OwlCursor() {
       const dy = mouse.y - owl.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Spring physics for owl following cursor — tightened for snappier feel
+      // Spring physics for owl following cursor, tightened for snappier feel
       const stiffness = 24;
       const damping = 3.5;
 

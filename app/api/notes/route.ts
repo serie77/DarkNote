@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       selfDestruct = true,
       maxReads = null,
       guaranteedRetention = false,
+      premiumRequested = false,
       giftAmountSol = null,
       giftTxSignature = null
     } = body;
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     // ceilings server-side, and require a verified x402 payment for premium
     // capability. Free notes pass straight through, unchanged.
     const gate = await evaluatePremiumGate({
-      body: { ciphertext, maxReads, guaranteedRetention },
+      body: { ciphertext, maxReads, guaranteedRetention, premiumRequested },
       paymentHeader: request.headers.get('x-payment'),
       store: getPremiumStore(),
       facilitator: getFacilitator(),

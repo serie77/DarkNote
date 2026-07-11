@@ -281,7 +281,7 @@ export default function DocsPage() {
                 <SectionHeader icon="eye-off" title="Threat Model" />
                 <div className="space-y-3">
                   <ThreatRow attacker="Compromised server" outcome="Messages are encrypted. Server only stores ciphertext, nonces, and ephemeral public keys. No decryption possible." />
-                  <ThreatRow attacker="Network eavesdropper" outcome="All traffic is HTTPS. The note link contains only the note ID — no decryption key in the URL." />
+                  <ThreatRow attacker="Network eavesdropper" outcome="All traffic is HTTPS. The note link contains only the note ID, with no decryption key in the URL." />
                   <ThreatRow attacker="Recipient's device" outcome="Once decrypted, the plaintext is in the recipient's browser. We can't control their device." />
                   <ThreatRow attacker="Sender's device" outcome="The plaintext exists on the sender's device before encryption. Standard endpoint security applies." />
                 </div>
