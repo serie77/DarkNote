@@ -41,6 +41,7 @@ export async function GET(
       selfDestruct: note.selfDestruct,
       maxReads: note.maxReads,
       currentReads: note.currentReads,
+      premium: note.premium,
     });
   } catch (error) {
     console.error('Error fetching note:', error);

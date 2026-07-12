@@ -16,7 +16,6 @@ const WalletMultiButton = dynamic(
 
 const FREE_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGE_LENGTH = 10000; // premium (x402) raises the free 2,000-char limit
-const GIF_LIKE = /(https?:\/\/\S+\.(?:gif|png|jpe?g|webp))|tenor\.com|giphy\.com/i;
 // mock by default. set NEXT_PUBLIC_X402_MODE=devnet to pay real (faucet) USDC.
 const CLIENT_X402_MODE = process.env.NEXT_PUBLIC_X402_MODE === 'devnet' ? 'devnet' : 'mock';
 const EMOTE_SECTIONS = [
@@ -107,6 +106,8 @@ export default function Home() {
   const [selfDestruct, setSelfDestruct] = useState(false);
   const [maxReads, setMaxReads] = useState<number | null>(null);
   const [guaranteedRetention, setGuaranteedRetention] = useState(false);
+  const [premiumNote, setPremiumNote] = useState(false);
+  const [paidReceipt, setPaidReceipt] = useState<{ amount?: number; asset?: string } | null>(null);
   const [payModal, setPayModal] = useState<{
     terms: { nonce: string; amount: number; network: string; asset: string; payTo: string };
     noteId: string;
@@ -114,10 +115,11 @@ export default function Home() {
   } | null>(null);
   const [hasEncryptionKey, setHasEncryptionKey] = useState<boolean | null>(null);
   const [checkingKey, setCheckingKey] = useState(false);
-  const unsupportedEmbedLinks = useMemo(
-    () => parseInlineMessageParts(message).filter((part) => part.kind === 'link'),
-    [message]
-  );
+  const messageParts = useMemo(() => parseInlineMessageParts(message), [message]);
+  const unsupportedEmbedLinks = messageParts.filter((part) => part.kind === 'link');
+  // detect media with the same parser the reader uses, so the composer flags
+  // premium for exactly the URLs that would actually embed.
+  const hasMediaEmbed = messageParts.some((part) => part.kind === 'media');
 
   const positionEmotePanel = useCallback(() => {
     const button = emoteButtonRef.current;
@@ -245,21 +247,25 @@ export default function Home() {
 
 
 
-  const hasGifLink = GIF_LIKE.test(message);
   // a note is premium (so it needs an x402 payment) if it's over the free
-  // message length, has a gif in it, is multi-read, or wants guaranteed
-  // retention.
+  // message length, has embedded media in it, is multi-read, wants guaranteed
+  // retention, or was opted in explicitly.
   const isPremiumNote =
+    premiumNote ||
     guaranteedRetention ||
     (selfDestruct && (maxReads ?? 1) > 1) ||
     message.length > FREE_MESSAGE_LENGTH ||
-    hasGifLink;
+    hasMediaEmbed;
+
+  // free notes are physically capped in the composer; premium raises the cap.
+  const composerLimit = isPremiumNote ? MAX_MESSAGE_LENGTH : FREE_MESSAGE_LENGTH;
 
   const premiumReasons = [
     message.length > FREE_MESSAGE_LENGTH ? 'long message' : null,
-    hasGifLink ? 'GIF attached' : null,
+    hasMediaEmbed ? 'media embed' : null,
     selfDestruct && (maxReads ?? 1) > 1 ? 'multi-read' : null,
     guaranteedRetention ? 'guaranteed retention' : null,
+    premiumNote ? 'premium enabled' : null,
   ].filter(Boolean);
   const premiumReasonText = premiumReasons.length ? `Includes ${premiumReasons.join(', ')}.` : '';
 
@@ -300,6 +306,7 @@ export default function Home() {
     setGuaranteedRetention(false);
     setSelfDestruct(false);
     setMaxReads(null);
+    setPremiumNote(false);
     setPayModal(null);
   };
 
@@ -313,6 +320,7 @@ export default function Home() {
         const d = await res.json();
         throw new Error(d.error || 'Payment could not be completed');
       }
+      setPaidReceipt({ amount: payModal.terms.amount, asset: payModal.terms.asset });
       finishNote(payModal.noteId);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Payment could not be completed');
@@ -324,6 +332,7 @@ export default function Home() {
   const handleCreateNote = async () => {
     setError('');
     setNoteUrl('');
+    setPaidReceipt(null);
 
     if (!message.trim()) {
       setError('Please enter a message');
@@ -410,6 +419,7 @@ export default function Home() {
           const d = await paid.json().catch(() => ({}));
           throw new Error(d.error || 'Payment could not be completed');
         }
+        setPaidReceipt({});
         finishNote(noteId);
         return;
       }
@@ -644,15 +654,15 @@ export default function Home() {
                     <textarea
                       ref={textareaRef}
                       value={message}
-                      onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                      onChange={(e) => setMessage(e.target.value.slice(0, composerLimit))}
                       placeholder="Write your encrypted message..."
                       rows={6}
-                      maxLength={MAX_MESSAGE_LENGTH}
+                      maxLength={composerLimit}
                       className="w-full px-4 py-3 pr-32 bg-black/50 border border-zinc-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 resize-none transition text-sm"
                     />
                     <div className="absolute top-3 right-3 flex items-center gap-2">
-                      <p className={`text-[11px] tabular-nums ${message.length > FREE_MESSAGE_LENGTH ? 'text-purple-300' : 'text-gray-500'}`}>
-                        {message.length}/{message.length > FREE_MESSAGE_LENGTH ? MAX_MESSAGE_LENGTH : FREE_MESSAGE_LENGTH}
+                      <p className={`text-[11px] tabular-nums ${isPremiumNote ? 'text-purple-300' : 'text-gray-500'}`}>
+                        {message.length}/{composerLimit}
                       </p>
                       <div className="relative">
                         <button
@@ -678,6 +688,22 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+
+                  {!isPremiumNote && message.length >= FREE_MESSAGE_LENGTH && (
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-purple-500/40 bg-purple-500/10 px-3 py-2 text-xs text-purple-200">
+                      <span>
+                        Free notes are capped at {FREE_MESSAGE_LENGTH.toLocaleString()} characters.
+                        Premium raises this to {MAX_MESSAGE_LENGTH.toLocaleString()}.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPremiumNote(true)}
+                        className="shrink-0 rounded-md border border-purple-400/60 px-2.5 py-1 font-medium text-purple-100 transition hover:bg-purple-500/20"
+                      >
+                        Enable premium
+                      </button>
+                    </div>
+                  )}
 
                   {unsupportedEmbedLinks.length > 0 && (
                     <div className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-200">
@@ -736,30 +762,53 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Premium: Guaranteed Retention (unlocked via x402) */}
+                {/* Premium: unlock composer limits (paid via x402 when sending) */}
                 <div className="mb-5 p-4 bg-black/30 border border-zinc-800 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-xs font-medium text-gray-400 flex items-center gap-2">
-                      <span>⭐</span> Guaranteed retention
+                      <span>⭐</span> Premium note
                       <span className="text-[10px] font-semibold text-purple-400 tracking-wide">PREMIUM</span>
                     </label>
                     <button
-                      onClick={() => setGuaranteedRetention(!guaranteedRetention)}
+                      aria-label="Toggle premium note"
+                      onClick={() => setPremiumNote(!premiumNote)}
                       className={`relative w-11 h-6 rounded-full transition ${
-                        guaranteedRetention ? 'bg-purple-500' : 'bg-zinc-700'
+                        premiumNote ? 'bg-purple-500' : 'bg-zinc-700'
                       }`}
                     >
                       <div
                         className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ${
-                          guaranteedRetention ? 'translate-x-5' : ''
+                          premiumNote ? 'translate-x-5' : ''
                         }`}
                       />
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Premium notes (multi-read, large, or guaranteed-retention) unlock with a small
-                    on-chain micropayment (x402) when you create them. Ordinary notes stay free.
+                  <p className="text-xs text-gray-500 mb-3">
+                    Unlocks up to {MAX_MESSAGE_LENGTH.toLocaleString()} characters (free notes stop
+                    at {FREE_MESSAGE_LENGTH.toLocaleString()}) and GIF/image embeds. Paid with a
+                    small x402 micropayment when you send.
                   </p>
+                  <div className="border-t border-zinc-800 pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-medium text-gray-400">Guaranteed retention</label>
+                      <button
+                        aria-label="Toggle guaranteed retention"
+                        onClick={() => setGuaranteedRetention(!guaranteedRetention)}
+                        className={`relative w-11 h-6 rounded-full transition ${
+                          guaranteedRetention ? 'bg-purple-500' : 'bg-zinc-700'
+                        }`}
+                      >
+                        <div
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ${
+                            guaranteedRetention ? 'translate-x-5' : ''
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      The note is kept until it is read, never expired early.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Error */}
@@ -857,6 +906,16 @@ export default function Home() {
                   </div>
                   <p className="text-gray-400 text-xs mb-4">Share this link with the recipient</p>
 
+                  {paidReceipt && (
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-purple-500/40 bg-purple-500/10 px-3 py-1.5 text-xs text-purple-200">
+                      <span>⭐</span>
+                      <span>
+                        Premium unlocked with an x402 micropayment
+                        {paidReceipt.amount ? ` (${paidReceipt.amount} ${paidReceipt.asset})` : ''}.
+                      </span>
+                    </div>
+                  )}
+
                   {/* URL Display */}
                   <div className="mb-5 p-4 bg-black/50 border border-zinc-700 rounded-lg">
                     <p className="text-xs text-gray-300 break-all font-mono">{noteUrl}</p>
@@ -871,7 +930,10 @@ export default function Home() {
                       {copied ? '✓ Copied!' : 'Copy Link'}
                     </button>
                     <button
-                      onClick={() => setNoteUrl('')}
+                      onClick={() => {
+                        setNoteUrl('');
+                        setPaidReceipt(null);
+                      }}
                       className="flex-1 py-3 bg-zinc-800 text-white font-medium rounded-lg hover:bg-zinc-700 transition text-sm"
                     >
                       Create Another

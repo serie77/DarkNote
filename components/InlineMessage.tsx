@@ -8,6 +8,9 @@ type InlineMessageProps = {
   maxMediaHeightClassName?: string;
   iframeHeightClassName?: string;
   showMediaLabel?: boolean;
+  // media embeds are a premium capability: free notes render media URLs as
+  // plain links instead of embedding them.
+  allowEmbeds?: boolean;
 };
 
 export function InlineMessage({
@@ -16,6 +19,7 @@ export function InlineMessage({
   maxMediaHeightClassName = 'max-h-[220px]',
   iframeHeightClassName = 'h-[220px]',
   showMediaLabel = false,
+  allowEmbeds = true,
 }: InlineMessageProps) {
   const parts = parseInlineMessageParts(message);
 
@@ -69,7 +73,7 @@ export function InlineMessage({
         continue;
       }
 
-      if (part.kind === 'link') {
+      if (part.kind === 'link' || !allowEmbeds) {
         rendered.push(
           <a
             key={index}

@@ -16,6 +16,7 @@ interface Note {
   selfDestruct: boolean;
   maxReads: number | null;
   currentReads: number;
+  premium: boolean;
 }
 
 export default function ViewNotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -312,7 +313,11 @@ export default function ViewNotePage({ params }: { params: Promise<{ id: string 
 
                 {/* Message Content */}
                 <div className="mb-5 p-6 bg-black/50 border border-zinc-700 rounded-lg min-h-[200px]">
-                  <InlineMessage message={renderedMessage} className="text-white text-base leading-relaxed" />
+                  <InlineMessage
+                    message={renderedMessage}
+                    className="text-white text-base leading-relaxed"
+                    allowEmbeds={note?.premium === true}
+                  />
                 </div>
 
                 {/* Actions */}
