@@ -41,8 +41,6 @@ export async function GET(
       selfDestruct: note.selfDestruct,
       maxReads: note.maxReads,
       currentReads: note.currentReads,
-      giftAmountSol: note.giftAmountSol ?? null,
-      giftTxSignature: note.giftTxSignature ?? null,
     });
   } catch (error) {
     console.error('Error fetching note:', error);

@@ -13,8 +13,6 @@ export interface Note {
   selfDestruct: boolean;
   maxReads: number | null;
   currentReads: number;
-  giftAmountSol: number | null;
-  giftTxSignature: string | null;
   // Premium feature (assessed increment): premium notes are exempt from the
   // periodic free-note cleanup so their retention is guaranteed (FR7).
   premium: boolean;
@@ -61,8 +59,6 @@ function initDb() {
       selfDestruct INTEGER NOT NULL DEFAULT 1,
       maxReads INTEGER,
       currentReads INTEGER NOT NULL DEFAULT 0,
-      giftAmountSol REAL,
-      giftTxSignature TEXT,
       premium INTEGER NOT NULL DEFAULT 0
     )
   `);
@@ -82,18 +78,6 @@ function initDb() {
 
   try {
     db.exec(`ALTER TABLE notes ADD COLUMN currentReads INTEGER NOT NULL DEFAULT 0`);
-  } catch {
-    // Column already exists
-  }
-
-  try {
-    db.exec(`ALTER TABLE notes ADD COLUMN giftAmountSol REAL`);
-  } catch {
-    // Column already exists
-  }
-
-  try {
-    db.exec(`ALTER TABLE notes ADD COLUMN giftTxSignature TEXT`);
   } catch {
     // Column already exists
   }
@@ -128,8 +112,8 @@ export function createNote(note: Omit<Note, 'createdAt' | 'currentReads'>): Note
   const createdAt = Date.now();
 
   const stmt = db.prepare(`
-    INSERT INTO notes (id, ciphertext, nonce, ephemeralPublicKey, recipientAddress, createdAt, selfDestruct, maxReads, currentReads, giftAmountSol, giftTxSignature, premium)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO notes (id, ciphertext, nonce, ephemeralPublicKey, recipientAddress, createdAt, selfDestruct, maxReads, currentReads, premium)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -142,8 +126,6 @@ export function createNote(note: Omit<Note, 'createdAt' | 'currentReads'>): Note
     note.selfDestruct ? 1 : 0,
     note.maxReads ?? null,
     0,
-    note.giftAmountSol ?? null,
-    note.giftTxSignature ?? null,
     note.premium ? 1 : 0
   );
 

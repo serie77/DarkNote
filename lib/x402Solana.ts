@@ -29,6 +29,6 @@ export function premiumRouteConfig(amountUsdc: number) {
   return {
     amount: String(Math.round(amountUsdc * 1_000_000)),
     asset: { address: DEVNET_USDC, decimals: 6 },
-    description: 'darknote premium note',
+    description: 'DarkNote premium note',
   };
 }

@@ -8,12 +8,6 @@ export const metadata: Metadata = {
     description: "Connect your Solana wallet to decrypt this private message on DarkNote.",
     images: ["/darknote.png"],
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "You received an encrypted message",
-    description: "Connect your Solana wallet to decrypt this private message on DarkNote.",
-    images: ["/darknote.png"],
-  },
 };
 
 export default function NoteLayout({ children }: { children: React.ReactNode }) {

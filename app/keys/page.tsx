@@ -123,7 +123,7 @@ export default function KeysPage() {
             />
             <h1 className="text-5xl font-black tracking-wider" style={{ fontFamily: 'var(--font-orbitron)' }}>
               <span className="bg-gradient-to-r from-zinc-600 to-zinc-400 bg-clip-text text-transparent">
-                SHROUD
+                DARK
               </span>
               <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
                 NOTE

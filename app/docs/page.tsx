@@ -24,7 +24,6 @@ const SECTIONS = [
     title: 'Features',
     items: [
       { id: 'self-destruct', label: 'Self-Destructing Notes' },
-      { id: 'sol-gifts', label: 'SOL Gifts with SplitNow' },
       { id: 'wallet-integration', label: 'Wallet Integration' },
     ],
   },
@@ -185,11 +184,10 @@ export default function DocsPage() {
                 <div className="space-y-4 mt-6">
                   <StepBlock step={1} title="Connect Your Wallet" description="Click the wallet button in the top right and connect with Phantom, Solflare, or any supported wallet." />
                   <StepBlock step={2} title="Generate Your Encryption Key (One-Time)" description="If this is your first time, you'll see a yellow banner asking you to generate your encryption key. Click the button and sign the message in your wallet." note="This is a one-time setup. Once done, anyone can send you encrypted messages." />
-                  <StepBlock step={3} title="Send a Message" description="Enter the recipient's Solana address, write your secret message, and optionally enable self-destruct or attach SOL." code={`1. Paste recipient address
+                  <StepBlock step={3} title="Send a Message" description="Enter the recipient's Solana address, write your secret message, and optionally enable self-destruct." code={`1. Paste recipient address
 2. Type your message
 3. (Optional) Enable Self-Destruct
-4. (Optional) Attach SOL gift
-5. Click "Create Encrypted Note"`} />
+4. Click "Create Encrypted Note"`} />
                   <StepBlock step={4} title="Share the Link" description="Copy the generated link and send it to the recipient via any channel. Only their wallet can decrypt it." />
                 </div>
               </section>
@@ -251,18 +249,6 @@ export default function DocsPage() {
                 </div>
               </section>
 
-              <section id="sol-gifts" className="scroll-mt-20">
-                <SectionHeader icon="gift" title="SOL Gifts with SplitNow" />
-                <p className="text-gray-300 leading-relaxed mb-4">
-                  Attach SOL to any message and we&apos;ll deliver it via SplitNow.
-                </p>
-                <div className="space-y-3">
-                  <FlowStep number={1} title="Create Gift Order">We generate a SplitNow order and receive a unique deposit address.</FlowStep>
-                  <FlowStep number={2} title="Send SOL to Deposit">You send SOL to the deposit address from your wallet.</FlowStep>
-                  <FlowStep number={3} title="Confirm &amp; Deliver">Once confirmed on-chain, SplitNow forwards the SOL to the recipient.</FlowStep>
-                </div>
-              </section>
-
               <section id="wallet-integration" className="scroll-mt-20">
                 <SectionHeader icon="wallet" title="Wallet Integration" />
                 <p className="text-gray-300 leading-relaxed mb-4">
@@ -303,7 +289,6 @@ function SectionHeader({ icon, title }: { icon: string; title: string }) {
     shield: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
     key: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />,
     fire: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />,
-    gift: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />,
     wallet: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />,
     'eye-off': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />,
     code: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />,
@@ -377,20 +362,6 @@ function ProofItem({ label, value }: { label: string; value: string }) {
       <div>
         <span className="text-gray-500 text-xs">{label}</span>
         <span className="text-gray-300 text-sm ml-2">{value}</span>
-      </div>
-    </div>
-  );
-}
-
-function FlowStep({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center">
-        <span className="text-[10px] font-bold text-purple-400">{number}</span>
-      </div>
-      <div>
-        <p className="text-white text-sm font-medium mb-1">{title}</p>
-        <p className="text-gray-400 text-sm leading-relaxed">{children}</p>
       </div>
     </div>
   );

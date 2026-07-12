@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
-import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { encryptMessage, generateNoteId, deriveEncryptionKeyFromSignature, parseInlineMessageParts } from '@/lib/crypto';
 import { InlineMessage } from '@/components/InlineMessage';
 
@@ -14,23 +14,6 @@ const WalletMultiButton = dynamic(
   { ssr: false }
 );
 
-// Steps in the gift delivery flow, in order.
-type GiftStep =
-  | 'idle'
-  | 'creating-order'
-  | 'awaiting-approval'
-  | 'confirming'
-  | 'delivering'
-  | 'delivered'
-  | 'failed';
-
-const GIFT_STEPS: { key: GiftStep; label: string; hint: string }[] = [
-  { key: 'creating-order', label: 'Creating order', hint: 'Setting up the transfer with SplitNow' },
-  { key: 'awaiting-approval', label: 'Approve in wallet', hint: 'Confirm the transaction in your wallet' },
-  { key: 'confirming', label: 'Confirming on-chain', hint: 'Waiting for Solana to confirm your deposit' },
-  { key: 'delivering', label: 'Delivering via SplitNow', hint: 'SplitNow is forwarding SOL to the recipient' },
-  { key: 'delivered', label: 'Gift delivered', hint: 'Funds have reached the recipient' },
-];
 const FREE_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGE_LENGTH = 10000; // premium (x402) raises the free 2,000-char limit
 const GIF_LIKE = /(https?:\/\/\S+\.(?:gif|png|jpe?g|webp))|tenor\.com|giphy\.com/i;
@@ -107,114 +90,9 @@ const EMOTE_SECTIONS = [
   },
 ] as const;
 const EMOTE_TOTAL = EMOTE_SECTIONS.reduce((total, section) => total + section.items.length, 0);
-function stepIndex(step: GiftStep): number {
-  return GIFT_STEPS.findIndex((s) => s.key === step);
-}
-
-function GiftProgress({ step, elapsedSec }: { step: GiftStep; elapsedSec: number }) {
-  const activeIndex = stepIndex(step);
-  const failed = step === 'failed';
-  const done = step === 'delivered';
-
-  return (
-    <div className="mb-5 p-4 bg-purple-500/5 border border-purple-500/30 rounded-lg">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-medium text-purple-300 flex items-center gap-2">
-          <span>🎁</span>
-          {failed ? 'Gift failed' : done ? 'Gift delivered!' : 'Sending your SOL gift'}
-        </span>
-        {step === 'delivering' && (
-          <span className="text-[10px] font-mono text-purple-400/70 tabular-nums">
-            {Math.floor(elapsedSec / 60)}:{String(elapsedSec % 60).padStart(2, '0')}
-          </span>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        {GIFT_STEPS.map((s, i) => {
-          const isComplete = done ? true : i < activeIndex;
-          const isActive = !failed && !done && i === activeIndex;
-          const isFailedHere = failed && i === activeIndex;
-          return (
-            <div key={s.key} className="flex items-start gap-3">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                    isComplete
-                      ? 'bg-green-500/20 border-green-500 text-green-400'
-                      : isFailedHere
-                      ? 'bg-red-500/20 border-red-500 text-red-400'
-                      : isActive
-                      ? 'bg-purple-500/20 border-purple-400'
-                      : 'bg-zinc-800 border-zinc-700'
-                  }`}
-                >
-                  {isComplete ? (
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : isFailedHere ? (
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  ) : isActive ? (
-                    <svg className="w-3 h-3 animate-spin text-purple-300" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                  )}
-                </div>
-                {i < GIFT_STEPS.length - 1 && (
-                  <div
-                    className={`w-px h-5 mt-1 transition-colors duration-300 ${
-                      isComplete ? 'bg-green-500/40' : 'bg-zinc-700'
-                    }`}
-                  />
-                )}
-              </div>
-
-              <div className="flex-1 -mt-0.5">
-                <p
-                  className={`text-xs font-medium transition-colors ${
-                    isComplete
-                      ? 'text-green-400'
-                      : isFailedHere
-                      ? 'text-red-400'
-                      : isActive
-                      ? 'text-purple-200'
-                      : 'text-gray-500'
-                  }`}
-                >
-                  {s.label}
-                </p>
-                {isActive && (
-                  <p className="text-[11px] text-gray-500 mt-0.5">{s.hint}</p>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {step === 'delivering' && (
-        <div className="mt-4">
-          <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-            <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-[giftSlide_1.5s_ease-in-out_infinite] rounded-full" />
-          </div>
-          <p className="text-[11px] text-gray-500 mt-2 text-center">
-            This can take a minute or two - please keep this tab open.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function Home() {
-  const { connection } = useConnection();
-  const { publicKey, signMessage, signTransaction, connected, sendTransaction } = useWallet();
+  const { publicKey, signMessage, signTransaction, connected } = useWallet();
   const [message, setMessage] = useState('');
   const [emoteOpen, setEmoteOpen] = useState(false);
   const [emoteCategoryOpen, setEmoteCategoryOpen] = useState(false);
@@ -236,11 +114,6 @@ export default function Home() {
   } | null>(null);
   const [hasEncryptionKey, setHasEncryptionKey] = useState<boolean | null>(null);
   const [checkingKey, setCheckingKey] = useState(false);
-  const [giftEnabled, setGiftEnabled] = useState(false);
-  const [giftAmount, setGiftAmount] = useState('');
-  const [giftStep, setGiftStep] = useState<GiftStep>('idle');
-  const [giftElapsed, setGiftElapsed] = useState(0);
-  const giftTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unsupportedEmbedLinks = useMemo(
     () => parseInlineMessageParts(message).filter((part) => part.kind === 'link'),
     [message]
@@ -366,54 +239,7 @@ export default function Home() {
 
 
 
-    // Run the elapsed timer only while we're actively delivering via SplitNow.
-    useEffect(() => {
-      if (giftStep === 'delivering') {
-        setGiftElapsed(0);
-        giftTimerRef.current = setInterval(() => {
-          setGiftElapsed((s) => s + 1);
-        }, 1000);
-      } else if (giftTimerRef.current) {
-        clearInterval(giftTimerRef.current);
-        giftTimerRef.current = null;
-      }
-      return () => {
-        if (giftTimerRef.current) {
-          clearInterval(giftTimerRef.current);
-          giftTimerRef.current = null;
-        }
-      };
-    }, [giftStep]);
 
-    // Result of polling SplitNow order status
-    type GiftPollResult =
-      | { status: 'completed' }
-      | { status: 'failed' }
-      | { status: 'timeout' };
-
-    // Poll SplitNow order status until the funds are actually sent (or it fails/times out)
-  const pollGiftStatus = useCallback(async (orderId: string): Promise<GiftPollResult> => {
-    const maxAttempts = 120; // 10 minutes max (every 5s)
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(r => setTimeout(r, 5000));
-      try {
-        const res = await fetch(`/api/gift/status?orderId=${orderId}`);
-        if (!res.ok) continue;
-                const data = await res.json();
-        // Use statusShort per SplitNow spec. Terminal values: completed | expired | halted | failed | refunded
-        if (data.status === 'completed') {
-          return { status: 'completed' };
-        }
-        if (data.status === 'failed') {
-          return { status: 'failed' };
-        }
-        // data.status === 'processing' or anything else - keep polling
-      } catch {
-        // transient error - keep polling
-      }
-    }
-    return { status: 'timeout' };
-  }, []);
 
 
 
@@ -474,9 +300,6 @@ export default function Home() {
     setGuaranteedRetention(false);
     setSelfDestruct(false);
     setMaxReads(null);
-    setGiftAmount('');
-    setGiftEnabled(false);
-    setGiftStep('idle');
     setPayModal(null);
   };
 
@@ -501,7 +324,6 @@ export default function Home() {
   const handleCreateNote = async () => {
     setError('');
     setNoteUrl('');
-    setGiftStep('idle');
 
     if (!message.trim()) {
       setError('Please enter a message');
@@ -525,17 +347,6 @@ export default function Home() {
       return;
     }
 
-    // Gift requires wallet connection
-    if (giftEnabled && (!connected || !publicKey || !sendTransaction)) {
-      setError('Connect your wallet to send a SOL gift');
-      return;
-    }
-
-    const parsedGiftAmount = giftEnabled ? parseFloat(giftAmount) : 0;
-    if (giftEnabled && (isNaN(parsedGiftAmount) || parsedGiftAmount <= 0)) {
-      setError('Enter a valid SOL amount for the gift');
-      return;
-    }
 
     setLoading(true);
 
@@ -561,146 +372,6 @@ export default function Home() {
         return;
       }
 
-      // Handle gift flow if enabled
-      let giftTxSignature: string | null = null;
-      let giftAmountSol: number | null = null;
-
-
-
-            if (giftEnabled && parsedGiftAmount > 0 && publicKey && sendTransaction) {
-        setGiftStep('creating-order');
-
-        try {
-          // Step 1: Create quote + order via our API
-          const giftRes = await fetch('/api/gift', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              recipientAddress,
-              amountSol: parsedGiftAmount,
-            }),
-          });
-
-          if (!giftRes.ok) {
-            const giftErr = await giftRes.json();
-            throw new Error(giftErr.error || 'Failed to create gift order');
-          }
-
-          const giftData = await giftRes.json();
-
-
-
-                    // Step 2: Send SOL to SplitNow deposit address
-          setGiftStep('awaiting-approval');
-          const depositPubkey = new PublicKey(giftData.depositAddress);
-
-                    const transaction = new Transaction().add(
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: depositPubkey,
-              lamports: Math.round(parsedGiftAmount * LAMPORTS_PER_SOL),
-            })
-          );
-
-          // Fetch the blockhash + lastValidBlockHeight as late as possible (right
-          // before sending) so it doesn't expire while the user reviews the wallet
-          // prompt. We use 'finalized' to get a stable, widely-propagated blockhash
-          // which avoids "Blockhash not found" on RPCs that lag behind.
-          const { blockhash, lastValidBlockHeight } =
-            await connection.getLatestBlockhash('finalized');
-          transaction.recentBlockhash = blockhash;
-          transaction.lastValidBlockHeight = lastValidBlockHeight;
-          transaction.feePayer = publicKey;
-
-
-
-                                        const txSig = await sendTransaction(transaction, connection);
-          setGiftStep('confirming');
-
-          // Confirm the deposit tx actually landed on-chain.
-          // confirmTransaction can throw TransactionExpiredBlockheightExceededError
-          // even when the tx landed fine - the watcher just timed out. So we catch
-          // that and fall back to getSignatureStatuses to check directly.
-          let txLanded = false;
-          try {
-            const confirmation = await connection.confirmTransaction(
-              { signature: txSig, blockhash, lastValidBlockHeight },
-              'confirmed'
-            );
-            txLanded = !confirmation.value.err;
-          } catch (confirmErr) {
-            // confirmTransaction threw - likely block height exceeded.
-            // Check if the tx actually landed anyway.
-            console.warn('confirmTransaction threw, checking signature status directly:', confirmErr);
-            for (let retry = 0; retry < 5; retry++) {
-              await new Promise(r => setTimeout(r, 3000));
-              try {
-                const statusResp = await connection.getSignatureStatuses([txSig]);
-                const status = statusResp?.value?.[0];
-                if (status && status.confirmationStatus && !status.err) {
-                  txLanded = true;
-                  break;
-                }
-                if (status?.err) {
-                  break; // genuinely failed on-chain
-                }
-              } catch {
-                // RPC hiccup, keep retrying
-              }
-            }
-          }
-
-          if (!txLanded) {
-            throw new Error(
-              'Deposit transaction could not be confirmed on-chain. ' +
-              'Check your wallet - if SOL was deducted the transfer may still process. ' +
-              `Tx: ${txSig}`
-            );
-          }
-          setGiftStep('delivering');
-
-          // Step 3: Wait for SplitNow to actually forward the funds to the
-          // recipient BEFORE we create the note. This prevents the race where the
-          // message claims a gift was delivered while SplitNow is still processing
-          // (or ends up failing).
-          const pollResult = await pollGiftStatus(giftData.orderId);
-
-
-
-
-
-
-                    if (pollResult.status === 'completed') {
-                      giftTxSignature = txSig; // We already have the tx sig from the deposit
-                      giftAmountSol = parsedGiftAmount;
-                      setGiftStep('delivered');
-                    } else if (pollResult.status === 'failed') {
-            setGiftStep('failed');
-            throw new Error(
-              'SplitNow could not deliver the gift. Your deposit was received but ' +
-                'not forwarded - please contact support with order ' +
-                `${giftData.orderId} before resending.`
-            );
-
-
-
-                    } else {
-            setGiftStep('failed');
-            // Timed out waiting for delivery - do NOT create the note, to avoid a
-            // race where the recipient sees a gift that hasn't actually arrived.
-            throw new Error(
-              'Timed out waiting for SplitNow to deliver the gift (order ' +
-                `${giftData.orderId}). The funds may still arrive shortly. ` +
-                'Please check the order status before resending to avoid double-paying.'
-            );
-          }
-        } catch (giftErr) {
-          console.error('Gift error:', giftErr);
-          setError(`Gift failed: ${giftErr instanceof Error ? giftErr.message : 'Unknown error'}`);
-          setLoading(false);
-          return;
-        }
-      }
 
       const encrypted = encryptMessage(message, x25519PublicKey);
       const noteId = generateNoteId();
@@ -713,8 +384,6 @@ export default function Home() {
         maxReads,
         guaranteedRetention,
         premiumRequested: isPremiumNote,
-        giftAmountSol,
-        giftTxSignature,
       };
 
       // devnet mode: let the x402 client sign a real (faucet) USDC transfer and
@@ -866,18 +535,6 @@ export default function Home() {
       <div className="h-screen p-4 overflow-hidden">
         {/* Header Bar - Top */}
         <div className="absolute top-4 right-4 flex items-center gap-3 animate-[fadeIn_0.6s_ease-out_1s_forwards] opacity-0">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950/70 backdrop-blur-xl px-4 py-2 shadow-lg shadow-black/20">
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText('notej5xmjxdvVUrdaLKCAu78thXGzBNkYF3HCcfqREf');
-              }}
-              className="flex items-center gap-3 transition hover:opacity-80"
-              title="Click to copy"
-            >
-              <span className="text-[10px] uppercase tracking-[0.24em] text-zinc-500">CA</span>
-              <span className="font-mono text-sm text-gray-100">notej5xmjxdvVUrdaLKCAu78thXGzBNkYF3HCcfqREf</span>
-            </button>
-          </div>
           <WalletMultiButton />
         </div>
 
@@ -893,7 +550,7 @@ export default function Home() {
                 />
                 <h1 className="text-6xl font-black tracking-wider" style={{ fontFamily: 'var(--font-orbitron)' }}>
                   <span className="bg-gradient-to-r from-zinc-600 to-zinc-400 bg-clip-text text-transparent hover:from-zinc-500 hover:to-zinc-300 hover:drop-shadow-[0_0_10px_rgba(161,161,170,0.5)] transition-all cursor-pointer">
-                    SHROUD
+                    DARK
                   </span>
                   <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent hover:from-purple-300 hover:to-purple-500 hover:drop-shadow-[0_0_10px_rgba(192,132,252,0.5)] transition-all cursor-pointer">
                     NOTE
@@ -906,7 +563,6 @@ export default function Home() {
 
               {/* Links */}
               <div className="flex items-center justify-center gap-4">
-                <span className="text-gray-700">•</span>
                                 <Link
                   href="/docs"
                   className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-300 transition text-xs"
@@ -916,13 +572,6 @@ export default function Home() {
                   </svg>
                   <span>Docs</span>
                 </Link>
-                <span className="text-gray-700">•</span>
-                <a
-                  href="/faq"
-                  className="text-gray-500 hover:text-gray-300 transition text-xs"
-                >
-                  FAQ
-                </a>
               </div>
             </div>
 
@@ -1113,57 +762,6 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* Attach SOL Gift */}
-                {connected && (
-                  <div className="mb-5 p-4 bg-black/30 border border-zinc-800 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-xs font-medium text-gray-400 flex items-center gap-2">
-                        <span>🎁</span> Attach SOL Gift
-                      </label>
-                      <button
-                        onClick={() => setGiftEnabled(!giftEnabled)}
-                        className={`relative w-11 h-6 rounded-full transition ${
-                          giftEnabled ? 'bg-purple-500' : 'bg-zinc-700'
-                        }`}
-                      >
-                        <div
-                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ${
-                            giftEnabled ? 'translate-x-5' : ''
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {giftEnabled && (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">
-                          SOL Amount
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            value={giftAmount}
-                            onChange={(e) => setGiftAmount(e.target.value)}
-                            placeholder="0.1"
-                            min="0.001"
-                            step="0.001"
-                            className="w-full px-3 py-2 bg-black/50 border border-zinc-700 rounded-md text-white text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 placeholder-gray-600 pr-12"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">SOL</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          SOL will be sent to the recipient via SplitNow when you create the note
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                                {/* Gift Progress */}
-                {giftStep !== 'idle' && (
-                  <GiftProgress step={giftStep} elapsedSec={giftElapsed} />
-                )}
-
                 {/* Error */}
                 {error && (
                   <div className="mb-5 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-xs">
@@ -1240,12 +838,10 @@ export default function Home() {
                     className="w-full py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   >
                     {loading
-                      ? (giftStep !== 'idle'
-                          ? (GIFT_STEPS.find((s) => s.key === giftStep)?.label ?? 'Sending gift...')
-                          : 'Creating encrypted note...')
+                      ? 'Creating encrypted note...'
                       : isPremiumNote
                         ? 'Continue to x402 payment'
-                        : (giftEnabled && giftAmount ? `Create Note + Send ${giftAmount} SOL` : 'Create Encrypted Note')}
+                        : 'Create Encrypted Note'}
                   </button>
                 )}
               </>

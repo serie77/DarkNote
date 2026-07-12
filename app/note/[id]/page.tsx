@@ -16,8 +16,6 @@ interface Note {
   selfDestruct: boolean;
   maxReads: number | null;
   currentReads: number;
-  giftAmountSol: number | null;
-  giftTxSignature: string | null;
 }
 
 export default function ViewNotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -202,14 +200,6 @@ export default function ViewNotePage({ params }: { params: Promise<{ id: string 
       <div className="h-screen flex items-center justify-center p-4 overflow-hidden">
         {/* Header Bar - Top */}
         <div className="absolute top-4 right-4 flex items-center gap-3 animate-[fadeIn_0.6s_ease-out_1s_forwards] opacity-0">
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText('...........................pump');
-            }}
-            className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-lg px-4 py-2 text-gray-300 hover:text-gray-100 hover:border-zinc-700 text-sm font-mono transition cursor-pointer"
-          >
-            TBD
-          </button>
           <WalletMultiButton />
         </div>
 
@@ -225,7 +215,7 @@ export default function ViewNotePage({ params }: { params: Promise<{ id: string 
                 />
                 <h1 className="text-5xl font-black tracking-wider cursor-pointer" style={{ fontFamily: 'var(--font-orbitron)' }}>
                   <span className="bg-gradient-to-r from-zinc-600 to-zinc-400 bg-clip-text text-transparent hover:from-zinc-500 hover:to-zinc-300 transition-all">
-                    SHROUD
+                    DARK
                   </span>
                   <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent hover:from-purple-300 hover:to-purple-500 transition-all">
                     NOTE
@@ -324,34 +314,6 @@ export default function ViewNotePage({ params }: { params: Promise<{ id: string 
                 <div className="mb-5 p-6 bg-black/50 border border-zinc-700 rounded-lg min-h-[200px]">
                   <InlineMessage message={renderedMessage} className="text-white text-base leading-relaxed" />
                 </div>
-
-                {/* Gift Notification */}
-                {note?.giftAmountSol && note.giftAmountSol > 0 && (
-                  <div className="mb-5 p-5 bg-gradient-to-r from-purple-500/15 via-purple-600/10 to-amber-500/10 border border-purple-500/30 rounded-xl">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
-                        <span className="text-xl">🎁</span>
-                      </div>
-                      <div>
-                        <p className="text-white font-semibold text-sm">SOL Gift Received!</p>
-                        <p className="text-purple-300 text-lg font-bold">{note.giftAmountSol} SOL</p>
-                      </div>
-                    </div>
-                    {note.giftTxSignature && (
-                      <a
-                        href={`https://solscan.io/tx/${note.giftTxSignature}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 text-xs transition group"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                        <span className="group-hover:underline">View transaction on Solscan</span>
-                      </a>
-                    )}
-                  </div>
-                )}
 
                 {/* Actions */}
                 <Link

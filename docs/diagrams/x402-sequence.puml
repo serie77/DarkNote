@@ -1,4 +1,4 @@
-@startuml darknote premium unlock via x402
+@startuml DarkNote premium unlock via x402
 actor Sender
 participant "Browser wallet" as Wallet
 participant "POST /api/notes" as Route

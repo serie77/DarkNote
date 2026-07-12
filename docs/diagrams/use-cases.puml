@@ -1,4 +1,4 @@
-@startuml darknote Premium use cases
+@startuml DarkNote Premium use cases
 left to right direction
 skinparam packageStyle rectangle
 
@@ -7,7 +7,7 @@ actor Recipient
 actor Operator
 actor "Machine sender" as Machine
 
-rectangle "darknote + Premium Notes" {
+rectangle "DarkNote + Premium Notes" {
   usecase "UC1 Send free note" as UC1
   usecase "UC2 Discover premium terms" as UC2
   usecase "UC3 Unlock premium note (x402)" as UC3

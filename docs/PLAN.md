@@ -4,7 +4,7 @@
 
 ## Provenance
 
-**darknote (DarkNote)** is the author's own pre-existing project and forms the baseline (tagged `v-baseline`). The assessed contribution is the **Premium Notes** feature — an x402-gated premium tier — built within the assessment window. The baseline/increment boundary is explicit in Git history and in [SRS.md](SRS.md) §1.1.
+**DarkNote** is the author's own pre-existing project and forms the baseline (tagged `v-baseline`). The assessed contribution is the **Premium Notes** feature — an x402-gated premium tier — built within the assessment window. The baseline/increment boundary is explicit in Git history and in [SRS.md](SRS.md) §1.1.
 
 ## Build schedule
 
@@ -29,7 +29,7 @@
 
 | Chapter | Source material |
 |---|---|
-| 1 Introduction | SRS §1 — the abuse + monetisation problem, darknote baseline, product position |
+| 1 Introduction | SRS §1 — the abuse + monetisation problem, DarkNote baseline, product position |
 | 2 Method | SRS §8 methodology, §7 risks, §9 ethics, provenance/version-control strategy |
 | 3 Research | Messaging spam/abuse economics; paywall & micropayment models; privacy-preserving monetisation (no ads/accounts); x402 & agentic-payment literature; Pugh matrices (payment mechanism, metering model, enforcement placement) |
 | 4 Requirements | SRS §3 scenarios, §4 use cases + diagram, §5 FRs, §6 NFRs (ISO/IEC 9126) |

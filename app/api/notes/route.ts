@@ -21,8 +21,6 @@ export async function POST(request: NextRequest) {
       maxReads = null,
       guaranteedRetention = false,
       premiumRequested = false,
-      giftAmountSol = null,
-      giftTxSignature = null
     } = body;
 
     // Validate required fields
@@ -56,8 +54,6 @@ export async function POST(request: NextRequest) {
         recipientAddress,
         selfDestruct,
         maxReads,
-        giftAmountSol,
-        giftTxSignature,
         premium,
       });
       return NextResponse.json({ success: true, noteId: note.id, premium });

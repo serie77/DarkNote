@@ -22,9 +22,9 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://darknote.io'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: "DarkNote - Encrypted Messages on Solana",
-  description: "Send encrypted messages secured by Solana wallets. Zero-knowledge, trustless encryption. Self-destructing notes with optional SOL gifts.",
+  description: "Send end-to-end encrypted, self-destructing messages addressed to any Solana wallet.",
   icons: {
     icon: '/favicon.ico',
     shortcut: '/icon.png',
@@ -45,13 +45,6 @@ export const metadata: Metadata = {
     ],
     locale: 'en_US',
     type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'DarkNote - Encrypted Messages on Solana',
-    description: 'Send encrypted messages secured by Solana wallets. Zero-knowledge, trustless encryption.',
-    images: ['/darknote.png'],
-    creator: '@darknote',
   },
 };
 

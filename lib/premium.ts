@@ -1,4 +1,4 @@
-// premium tier policy for darknote notes (this is the new bit i built).
+// premium tier policy for DarkNote notes (this is the new bit i built).
 // a note comes out free or premium depending on what it asks for, and the
 // premium ones get capped by hard ceilings the server enforces no matter what
 // the client sends (FR1, FR6, NFR2).

@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 export const X402_CONFIG = {
   asset: 'USDC',
   network: 'solana',
-  payTo: process.env.PREMIUM_PAYOUT_ADDRESS ?? 'DarknotePremiumPayoutAddrPlaceholder1111111',
+  payTo: process.env.PREMIUM_PAYOUT_ADDRESS ?? 'DarkNotePremiumPayoutAddrPlaceholder1111111',
 } as const;
 
 export interface PaymentTerms {
@@ -36,7 +36,7 @@ export function challengeTerms(nonce: string, amountUsdc: number): PaymentTerms 
         amount: amountUsdc,
         payTo: X402_CONFIG.payTo,
         resource: '/api/notes',
-        description: 'darknote premium note',
+        description: 'DarkNote premium note',
         nonce,
       },
     ],

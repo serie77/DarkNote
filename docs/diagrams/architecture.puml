@@ -1,7 +1,7 @@
-@startuml darknote Premium architecture
+@startuml DarkNote Premium architecture
 skinparam componentStyle rectangle
 
-package "darknote (Next.js app)" {
+package "DarkNote (Next.js app)" {
   package "Baseline (pre-existing context)" {
     [Send / Read UI] as UI
     [lib/crypto.ts\n(NaCl box, key derivation)] as Crypto

@@ -1,4 +1,4 @@
-# Software Requirements Specification — darknote Premium Notes
+# Software Requirements Specification — DarkNote Premium Notes
 
 **Version:** 1.0 · **Date:** 11 July 2026 · **Status:** governs development of the assessed increment; changes land via pull request so requirement evolution is diffable in version control.
 
@@ -8,13 +8,13 @@
 
 ### 1.1 Context and prior work
 
-**darknote** (product name *DarkNote*) is an existing, author-built application: it sends end-to-end encrypted notes to any Solana wallet. A note is encrypted **in the sender's browser** with NaCl `box` (X25519 key agreement + XSalsa20-Poly1305 AEAD); the recipient's encryption keypair is *derived deterministically from a wallet signature*, so only the wallet owner can decrypt and **the server stores nothing but ciphertext, a nonce, and an ephemeral public key**. Notes self-destruct after reading.
+**DarkNote** is an existing, author-built application: it sends end-to-end encrypted notes to any Solana wallet. A note is encrypted **in the sender's browser** with NaCl `box` (X25519 key agreement + XSalsa20-Poly1305 AEAD); the recipient's encryption keypair is *derived deterministically from a wallet signature*, so only the wallet owner can decrypt and **the server stores nothing but ciphertext, a nonce, and an ephemeral public key**. Notes self-destruct after reading.
 
-darknote is **pre-existing personal work** and is treated throughout this project as the project baseline / prior context — not as assessed output. This SRS and every commit in this repository from the baseline tag onward concern a **new feature built within the assessment window**. This mirrors the module's sanctioned "continue your own project / add a feature" shape.
+DarkNote is **pre-existing personal work** and is treated throughout this project as the project baseline / prior context — not as assessed output. This SRS and every commit in this repository from the baseline tag onward concern a **new feature built within the assessment window**. This mirrors the module's sanctioned "continue your own project / add a feature" shape.
 
 ### 1.2 Problem statement (motivating the new feature)
 
-darknote today grants its most powerful capabilities to anyone, for free and unmetered: the note-creation API accepts multi-read notes (`maxReads` up to 1000), payloads up to 100 KB, and long-lived retention with no cost or friction. This is two problems at once:
+DarkNote today grants its most powerful capabilities to anyone, for free and unmetered: the note-creation API accepts multi-read notes (`maxReads` up to 1000), payloads up to 100 KB, and long-lived retention with no cost or friction. This is two problems at once:
 
 1. **Abuse surface.** Unmetered multi-read, large-payload, long-retention notes are an attractive vector for spam and storage abuse — there is no cost to deter it.
 2. **No sustainable model.** A privacy tool cannot monetise through the usual levers — ads and accounts both require harvesting user data, which would destroy the very proposition (*"no accounts, emails, or phone numbers; even we can't read them"*).
@@ -50,7 +50,7 @@ The feature resolves both by introducing a **premium tier unlocked with a per-no
 
 ### 2.2 Out of scope
 
-- The base darknote application: its encryption scheme, wallet key derivation, storage, reader UI (pre-existing context, §1.1).
+- The base DarkNote application: its encryption scheme, wallet key derivation, storage, reader UI (pre-existing context, §1.1).
 - Any change to the cryptography or the end-to-end confidentiality property.
 - Custody of funds; the existing SOL "gift" flow (a separate third-party integration).
 - Accounts, KYC, ads, or any personal-data collection.
@@ -69,7 +69,7 @@ The feature resolves both by introducing a **premium tier unlocked with a per-no
 
 ## 3. User scenarios
 
-**S1 — The privacy-first sender (free).** Kai sends a one-time secret to a collaborator's wallet. He wants exactly what darknote already gives: encrypt in-browser, single read, self-destruct, no account, no cost. The new feature must not add any friction to this path.
+**S1 — The privacy-first sender (free).** Kai sends a one-time secret to a collaborator's wallet. He wants exactly what DarkNote already gives: encrypt in-browser, single read, self-destruct, no account, no cost. The new feature must not add any friction to this path.
 
 **S2 — The sender who needs it to persist (premium).** Mara sends recovery instructions her teammate must read on several devices over the next month. She needs a note that survives multiple reads and is guaranteed not to be swept by cleanup. She is willing to pay a few cents — but refuses to create an account or hand over card details for a privacy product.
 
@@ -133,7 +133,7 @@ Priorities: **M**ust / **S**hould / **C**ould. Each traces to use case(s); verif
 **Functionality (incl. security)**
 - NFR1 — *Payment integrity:* premium capability shall be granted only after facilitator-verified settlement; the unlock shall be replay-resistant (FR5). Verified by tests covering valid, invalid, duplicate, and concurrent payments.
 - NFR2 — *Tamper resistance:* tier limits shall hold against a hostile client that inflates `maxReads`, payload size, or retention in the request body (FR6).
-- NFR3 — *End-to-end confidentiality preserved:* the feature shall not weaken darknote's property that the server holds no key and cannot decrypt a note; payment metadata shall not be linkable to plaintext (there is none server-side).
+- NFR3 — *End-to-end confidentiality preserved:* the feature shall not weaken DarkNote's property that the server holds no key and cannot decrypt a note; payment metadata shall not be linkable to plaintext (there is none server-side).
 
 **Reliability**
 - NFR4 — Nonce redemption shall be atomic and consistent under concurrent requests; the same settlement shall never unlock two notes.
@@ -159,7 +159,7 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 
 | Decision | Options considered | Selected | Key rationale |
 |---|---|---|---|
-| **Payment mechanism** | **x402 · verify a raw on-chain SOL transfer · Stripe/cards · L402 (Lightning)** | **x402** | Account-less and machine-payable — matches darknote's no-account/no-PII ethos; on-chain USDC settlement; standard terms a client can parse. Stripe needs accounts + KYC (breaks the privacy model); raw-transfer verification reinvents a fragile facilitator; L402 needs Lightning infra |
+| **Payment mechanism** | **x402 · verify a raw on-chain SOL transfer · Stripe/cards · L402 (Lightning)** | **x402** | Account-less and machine-payable — matches DarkNote's no-account/no-PII ethos; on-chain USDC settlement; standard terms a client can parse. Stripe needs accounts + KYC (breaks the privacy model); raw-transfer verification reinvents a fragile facilitator; L402 needs Lightning infra |
 | **Metering model** | **per-note payment · prepaid credits · subscription** | **per-note** | Sending a note is not latency-critical, so the native per-request x402 model fits with no need for credit amortisation (an explicit contrast with latency-critical domains, discussed in the report); subscription reintroduces accounts |
 | Settlement store | reuse better-sqlite3 · new external DB | better-sqlite3 | Already the app's store; ACID transactions give atomic, replay-safe nonce redemption (FR5/NFR4) with no new infrastructure |
 | Facilitator | Coinbase-hosted · self-run · mock (tests/demo) | interface + mock, hosted for prod | `Facilitator` abstraction (NFR8) lets the demo and suite run without moving real value |
@@ -182,7 +182,7 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 
 - **Process:** solo Kanban (GitHub Projects, WIP limit 2), MoSCoW prioritisation; board + commit history is the auditable record.
 - **Testing:** TDD for the security-critical core — classification, tier enforcement, x402 verification, and nonce redemption — red-green-refactor with valid/invalid/duplicate/concurrent payment cases and tamper cases. Free-path characterisation tests guard against regression. The free-vs-premium latency claim (NFR6) is measured and reported.
-- **Version control:** Git + GitHub. The baseline commit captures pre-existing darknote and is tagged `v-baseline`; the assessed feature is built in short PR-merged branches with conventional commits and milestone tags (`v0.1-srs`, `v0.2-x402-core`, `v0.3-enforcement`, `v1.0-submission`). GitHub Actions CI runs the suite on every push.
+- **Version control:** Git + GitHub. The baseline commit captures pre-existing DarkNote and is tagged `v-baseline`; the assessed feature is built in short PR-merged branches with conventional commits and milestone tags (`v0.1-srs`, `v0.2-x402-core`, `v0.3-enforcement`, `v1.0-submission`). GitHub Actions CI runs the suite on every push.
 - **Configuration management:** documents versioned with code; the baseline vs increment boundary is explicit in history and in this SRS (§1.1), demonstrating controlled provenance.
 
 ## 9. Ethics
@@ -192,7 +192,7 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 - **No custody of funds:** payment settles on-chain to the operator address via the facilitator; the app never holds balances.
 - Payments are pseudonymous on-chain. The report's ethics section notes the UK regulatory context lightly — this is a privacy/communications tool with a paid feature, not a financial product or promotion — and addresses the dual-use nature of unreadable messaging honestly (abuse-resistance via cost is part of the design rationale).
 - Error surfaces never expose internal infrastructure (FR9).
-- **Provenance:** darknote is the author's own prior work, declared as the baseline (§1.1); the assessed contribution is the premium feature built within the assessment window.
+- **Provenance:** DarkNote is the author's own prior work, declared as the baseline (§1.1); the assessed contribution is the premium feature built within the assessment window.
 
 ## 10. Acceptance criteria / definition of done
 
