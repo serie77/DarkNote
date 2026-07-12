@@ -114,15 +114,19 @@ The scenarios yield seven use cases (full diagram: `docs/diagrams/use-cases.puml
 
 ### 3.3 Functional requirements (MoSCoW)
 
-Fifteen functional requirements were specified; the *Must* set defines the assessable core. Representative examples:
+Thirteen functional requirements were specified; the *Must* set defines the assessable core. Representative examples:
 
-- **FR1 (M):** classify a request as free or premium from its requested capabilities.
-- **FR3 (M):** an unpaid premium request returns `402` with machine-readable x402 terms.
-- **FR4 (M):** premium capability is honoured only after facilitator-verified settlement.
-- **FR5 (M):** one settlement unlocks exactly one premium note (replay-safe).
-- **FR6 (M):** tier ceilings are enforced server-side regardless of client input.
-- **FR7 (M):** premium notes are exempt from free-note cleanup (guaranteed retention).
-- **FR9 (M):** failures never leak internal detail.
+- **FR1 (M):** recipients register a wallet-derived X25519 public key, deterministic for a given wallet.
+- **FR2 (M):** notes are encrypted client-side; the server stores only ciphertext and holds no decryption key.
+- **FR3 (M):** a note becomes unreadable once its read allowance is exhausted (self-destruct).
+- **FR4 (M):** the system operates with no accounts and collects no personal data.
+- **FR5 (M):** classify a request as free or premium from its requested capabilities.
+- **FR6 (M):** an unpaid premium request returns `402` with machine-readable x402 terms.
+- **FR7 (M):** premium capability is honoured only after facilitator-verified settlement.
+- **FR8 (M):** one settlement unlocks exactly one premium note (replay-safe).
+- **FR9 (M):** tier ceilings are enforced server-side regardless of client input.
+- **FR10 (M):** premium notes are exempt from free-note cleanup (guaranteed retention).
+- **FR11 (M):** failures never leak internal detail.
 
 The full table, with priorities and use-case links, is maintained in the SRS and the traceability matrix.
 
@@ -158,7 +162,7 @@ Quality planning centred on making the security properties *testable* rather tha
 
 **Honesty about the limits of the privacy provided.** The system protects *content* but does not hide *metadata*: the recipient address, note timing and the payment are observable, consistent with the metadata-leakage literature (Section 2.1). The report does not overclaim; reducing this metadata footprint is identified as future work.
 
-**Payment ethics and regulation.** The service never custodies user funds — settlement is on-chain to the operator address via the facilitator — and payments are pseudonymous. It is positioned as a privacy/communications tool with a paid feature rather than a financial product, consistent with the distinction the FCA draws in its cryptoasset financial-promotion regime (Financial Conduct Authority, 2023). Error surfaces never expose internal detail (FR9).
+**Payment ethics and regulation.** The service never custodies user funds — settlement is on-chain to the operator address via the facilitator — and payments are pseudonymous. It is positioned as a privacy/communications tool with a paid feature rather than a financial product, consistent with the distinction the FCA draws in its cryptoasset financial-promotion regime (Financial Conduct Authority, 2023). Error surfaces never expose internal detail (FR11).
 
 ---
 
@@ -178,7 +182,7 @@ The gate (`premiumGate.ts`) implements the flow of use case UC3. It classifies t
 
 ![Figure 3: x402 premium-unlock sequence](diagrams/x402-sequence.png)
 
-*Figure 3 — Premium-unlock sequence: discover terms (UC2), pay, verify settlement, atomically redeem the nonce, and create the note. The alt branches show the replay (FR5), unverified-payment (FR4) and tamper (FR6) paths.*
+*Figure 3 — Premium-unlock sequence: discover terms (UC2), pay, verify settlement, atomically redeem the nonce, and create the note. The alt branches show the replay (FR8), unverified-payment (FR7) and tamper (FR9) paths.*
 
 ### 5.3 Server-side enforcement
 
@@ -190,7 +194,7 @@ The settlement store (`premiumStore.ts`) is the heart of the security design and
 
 ### 5.5 Preserving the baseline
 
-The feature integrates with the existing storage through a minimal, additive change consistent with the application's existing migration style: a `premium` flag column, an additional parameter on note creation, and a single clause added to the cleanup query so premium notes are exempt from deletion (realising guaranteed retention, FR7). The cryptography and key-derivation code are untouched; the feature never handles plaintext or keys, preserving the end-to-end confidentiality property by construction (Section 2.5).
+The feature integrates with the existing storage through a minimal, additive change consistent with the application's existing migration style: a `premium` flag column, an additional parameter on note creation, and a single clause added to the cleanup query so premium notes are exempt from deletion (realising guaranteed retention, FR10). The cryptography and key-derivation code are untouched; the feature never handles plaintext or keys, preserving the end-to-end confidentiality property by construction (Section 2.5).
 
 ### 5.6 Client integration
 
@@ -204,11 +208,11 @@ The send interface gained a *guaranteed retention* toggle and the 402-handling l
 
 The feature is covered by 25 automated tests across seven suites, all passing, executed in continuous integration. The suite is deliberately adversarial where it matters:
 
-- **Classification and enforcement** (`premium.test.ts`): free/premium classification (FR1); ceilings enforced against inflated values (FR6, tamper resistance).
-- **Settlement store** (`premiumStore.test.ts`): first redemption succeeds; replay and unknown nonces fail (FR5); and, critically, under 50 concurrent redemptions of one nonce, **exactly one** succeeds (reliability under concurrency).
+- **Classification and enforcement** (`premium.test.ts`): free/premium classification (FR5); ceilings enforced against inflated values (FR9, tamper resistance).
+- **Settlement store** (`premiumStore.test.ts`): first redemption succeeds; replay and unknown nonces fail (FR8); and, critically, under 50 concurrent redemptions of one nonce, **exactly one** succeeds (reliability under concurrency).
 - **Gate orchestration** (`premiumGate.test.ts`): free create without payment; `402` with self-describing terms; unverified and *underpaid* payments create nothing (payment integrity); verified payment creates; replayed settlement creates no second note.
-- **Route integration** (`notes-route.test.ts`): the HTTP surface returns the correct statuses and leaks no internal detail on malformed input (FR9).
-- **Retention** (`db-premium.test.ts`): cleanup deletes free notes but exempts premium notes (FR7).
+- **Route integration** (`notes-route.test.ts`): the HTTP surface returns the correct statuses and leaks no internal detail on malformed input (FR11).
+- **Retention** (`db-premium.test.ts`): cleanup deletes free notes but exempts premium notes (FR10).
 - **Efficiency** (`nfr6.test.ts`): the free path performs *zero* facilitator calls, proving payment is off the free path, with a measured per-operation latency comparison reported below.
 
 ### 6.2 Traceability
@@ -221,7 +225,7 @@ The efficiency requirement was measured by timing the gate over repeated operati
 
 ### 6.4 Evaluation against requirements
 
-All *Must* functional requirements (FR1–FR7, FR9) and the security/reliability/efficiency NFRs are satisfied and evidenced. The *Should* requirements — pricing discovery (FR8) and per-feature pricing (FR10) — are implemented and tested. The *Could* requirement (FR11, a programmatic metered API for machine senders) was deprioritised under the timebox, as planned by the MoSCoW discipline, and is identified as future work. The production build compiles cleanly with the new routes, and the feature is demonstrable end-to-end against the mock facilitator [SCREENSHOTS: FIGURE 4 free send; FIGURE 5 premium 402; FIGURE 6 unlocked note].
+All *Must* functional requirements (FR1–FR11) and the security/reliability/efficiency NFRs are satisfied and evidenced. The *Should* requirement — pricing discovery with per-feature pricing (FR12) — is implemented and tested. The *Could* requirement (FR13, a programmatic metered API for machine senders) was deprioritised under the timebox, as planned by the MoSCoW discipline, and is identified as future work. The production build compiles cleanly with the new routes, and the feature is demonstrable end-to-end against the mock facilitator [SCREENSHOTS: FIGURE 4 free send; FIGURE 5 premium 402; FIGURE 6 unlocked note].
 
 ---
 
@@ -245,7 +249,7 @@ Kanban with MoSCoW suited a solo, hard-timebox project: it made the *Could* requ
 
 ### 7.4 Limitations and future work
 
-The demonstration settles against a mock facilitator; integrating a live facilitator and a real wallet-signed stablecoin transfer is the immediate next step. Idempotent-claim handling for concurrent *identical* premium requests is currently best-effort and is a known limitation. The metadata-privacy literature (Section 2.1) points to a clear research direction: reducing the recipient/timing metadata DarkNote necessarily stores. Finally, the *Could*-tier programmatic API (FR11) would extend the same x402 core to machine senders, aligning the product with the emerging agentic-payments ecosystem the x402 research describes.
+The demonstration settles against a mock facilitator; integrating a live facilitator and a real wallet-signed stablecoin transfer is the immediate next step. Idempotent-claim handling for concurrent *identical* premium requests is currently best-effort and is a known limitation. The metadata-privacy literature (Section 2.1) points to a clear research direction: reducing the recipient/timing metadata DarkNote necessarily stores. Finally, the *Could*-tier programmatic API (FR13) would extend the same x402 core to machine senders, aligning the product with the emerging agentic-payments ecosystem the x402 research describes.
 
 ---
 

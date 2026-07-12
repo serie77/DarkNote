@@ -39,7 +39,7 @@ const base = (id: string, premium: boolean) => ({
   premium,
 });
 
-describe('note retention (FR7)', () => {
+describe('note retention (FR10)', () => {
   it('cleanup deletes free notes but exempts premium notes', () => {
     const freeId = 'free-' + randomUUID();
     const premiumId = 'prem-' + randomUUID();

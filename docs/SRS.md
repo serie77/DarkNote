@@ -112,27 +112,31 @@ UML use-case diagram: [diagrams/use-cases.puml](diagrams/use-cases.puml). Premiu
 
 Priorities: **M**ust / **S**hould / **C**ould. Each traces to use case(s); verification in [TRACEABILITY.md](TRACEABILITY.md).
 
+FR1–FR4 capture the pre-existing base application (assessed as documented context); FR5 onward capture the premium tier (the assessed increment).
+
 | ID | Pri | UC | Requirement |
 |---|---|---|---|
-| FR1 | M | UC1, UC4 | The server shall classify a note-creation request as *free* or *premium* from its requested capabilities (read count, payload size, retention). |
-| FR2 | M | UC1 | A free-tier request within free limits shall be created with no payment and no added latency versus the pre-existing flow. |
-| FR3 | M | UC2 | A premium request without a verified payment shall return `402` with machine-readable x402 terms (amount, asset, network, recipient, nonce). |
-| FR4 | M | UC3 | A premium request bearing a payment shall be honoured only after the facilitator verifies settlement; an unverified payment shall create nothing. |
-| FR5 | M | UC3 | Each settlement shall unlock exactly one premium note: a replayed or duplicate settlement shall create no second note (nonce redeemed atomically). |
-| FR6 | M | UC4 | The server shall enforce tier ceilings (max read count, max payload size, retention) regardless of client-supplied values; requests beyond premium ceilings shall be rejected. |
-| FR7 | M | UC5 | Premium notes shall be exempt from the periodic free-note cleanup so their retention is guaranteed. |
-| FR8 | S | UC2 | The system shall publish premium pricing via a discovery endpoint and an x402 challenge response. |
-| FR9 | M | all | All failure paths shall return user-readable messages that never leak internal details (facilitator internals, stack traces, env var names). |
-| FR10 | S | UC3 | Premium price shall be derived from the specific capabilities requested (per-feature pricing). |
-| FR11 | C | UC7 | The system shall expose a metered API to send notes programmatically, paid per note via x402. |
+| FR1 | M | UC1, UC6 | Recipients shall register their wallet-derived X25519 public key against their wallet address; senders shall retrieve it by address before encrypting. The derived key shall be deterministic for a given wallet. |
+| FR2 | M | UC1, UC6 | Notes shall be encrypted client-side; the server shall store only ciphertext, nonce and ephemeral public key, and hold no key capable of decryption. |
+| FR3 | M | UC6 | A note shall become unreadable once its read allowance is exhausted (self-destruct). |
+| FR4 | M | all | The system shall operate with no accounts and shall collect no personal data. |
+| FR5 | M | UC1, UC4 | The server shall classify a note-creation request as *free* or *premium* from its requested capabilities (read count, payload size, retention); a free request shall be created on the free path with no payment and no added latency versus the pre-existing flow. |
+| FR6 | M | UC2 | A premium request without a verified payment shall return `402` with machine-readable x402 terms (amount, asset, network, recipient, nonce). |
+| FR7 | M | UC3 | A premium request bearing a payment shall be honoured only after the facilitator verifies settlement; an unverified payment shall create nothing. |
+| FR8 | M | UC3 | Each settlement shall unlock exactly one premium note: a replayed or duplicate settlement shall create no second note (nonce redeemed atomically). |
+| FR9 | M | UC4 | The server shall enforce tier ceilings (max read count, max payload size, retention) regardless of client-supplied values; requests beyond premium ceilings shall be rejected. |
+| FR10 | M | UC5 | Premium notes shall be exempt from the periodic free-note cleanup so their retention is guaranteed. |
+| FR11 | M | all | All failure paths shall return user-readable messages that never leak internal details (facilitator internals, stack traces, env var names). |
+| FR12 | S | UC2 | The system shall publish premium pricing via a discovery endpoint and an x402 challenge response, with the price derived from the specific capabilities requested (per-feature pricing). |
+| FR13 | C | UC7 | The system shall expose a metered API to send notes programmatically, paid per note via x402. |
 
 ---
 
 ## 6. Non-functional requirements (ISO/IEC 9126 categories)
 
 **Functionality (incl. security)**
-- NFR1 — *Payment integrity:* premium capability shall be granted only after facilitator-verified settlement; the unlock shall be replay-resistant (FR5). Verified by tests covering valid, invalid, duplicate, and concurrent payments.
-- NFR2 — *Tamper resistance:* tier limits shall hold against a hostile client that inflates `maxReads`, payload size, or retention in the request body (FR6).
+- NFR1 — *Payment integrity:* premium capability shall be granted only after facilitator-verified settlement; the unlock shall be replay-resistant (FR8). Verified by tests covering valid, invalid, duplicate, and concurrent payments.
+- NFR2 — *Tamper resistance:* tier limits shall hold against a hostile client that inflates `maxReads`, payload size, or retention in the request body (FR9).
 - NFR3 — *End-to-end confidentiality preserved:* the feature shall not weaken DarkNote's property that the server holds no key and cannot decrypt a note; payment metadata shall not be linkable to plaintext (there is none server-side).
 
 **Reliability**
@@ -161,7 +165,7 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 |---|---|---|---|
 | **Payment mechanism** | **x402 · verify a raw on-chain SOL transfer · Stripe/cards · L402 (Lightning)** | **x402** | Account-less and machine-payable — matches DarkNote's no-account/no-PII ethos; on-chain USDC settlement; standard terms a client can parse. Stripe needs accounts + KYC (breaks the privacy model); raw-transfer verification reinvents a fragile facilitator; L402 needs Lightning infra |
 | **Metering model** | **per-note payment · prepaid credits · subscription** | **per-note** | Sending a note is not latency-critical, so the native per-request x402 model fits with no need for credit amortisation (an explicit contrast with latency-critical domains, discussed in the report); subscription reintroduces accounts |
-| Settlement store | reuse better-sqlite3 · new external DB | better-sqlite3 | Already the app's store; ACID transactions give atomic, replay-safe nonce redemption (FR5/NFR4) with no new infrastructure |
+| Settlement store | reuse better-sqlite3 · new external DB | better-sqlite3 | Already the app's store; ACID transactions give atomic, replay-safe nonce redemption (FR8/NFR4) with no new infrastructure |
 | Facilitator | Coinbase-hosted · self-run · mock (tests/demo) | interface + mock, hosted for prod | `Facilitator` abstraction (NFR8) lets the demo and suite run without moving real value |
 | Enforcement placement | client-side gating · server-side enforcement | server-side | A privacy/abuse control that a client can bypass is no control (NFR2) |
 
@@ -169,10 +173,10 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 
 | ID | Risk | L×I | Mitigation |
 |---|---|---|---|
-| R1 | Hard timebox (submission 13 Jul 14:00) | certain × high | MoSCoW; Could-haves (FR11/UC7) cut first; report drafted in parallel |
+| R1 | Hard timebox (submission 13 Jul 14:00) | certain × high | MoSCoW; Could-haves (FR13/UC7) cut first; report drafted in parallel |
 | R2 | Facilitator unavailable in demo | possible × high | `Facilitator` interface + mock settlement; demo runs end-to-end without live value |
 | R3 | Payment-verification or replay bug grants free premium | possible × high | Adversarial tests (invalid/duplicate/concurrent); atomic SQLite nonce redemption |
-| R4 | Hostile client inflates limits | likely × med | Server-side enforcement of tier ceilings (FR6) with tamper tests |
+| R4 | Hostile client inflates limits | likely × med | Server-side enforcement of tier ceilings (FR9) with tamper tests |
 | R5 | Regression breaks the free path or the end-to-end confidentiality property | possible × high | Free-path characterisation tests; the feature never touches ciphertext or keys |
 | R6 | Real-value demo (live USDC) | certain × low | Mock facilitator on camera; author's own wallet only if a live path is shown |
 
@@ -191,7 +195,7 @@ Weighted Pugh matrices appear in the report (Research chapter); selections summa
 - The feature **strengthens** the privacy posture: it monetises *without* ads, accounts, or tracking, which are the usual privacy-eroding levers. It never touches plaintext (there is none server-side) and does not weaken the end-to-end confidentiality property (NFR3).
 - **No custody of funds:** payment settles on-chain to the operator address via the facilitator; the app never holds balances.
 - Payments are pseudonymous on-chain. The report's ethics section notes the UK regulatory context lightly — this is a privacy/communications tool with a paid feature, not a financial product or promotion — and addresses the dual-use nature of unreadable messaging honestly (abuse-resistance via cost is part of the design rationale).
-- Error surfaces never expose internal infrastructure (FR9).
+- Error surfaces never expose internal infrastructure (FR11).
 - **Provenance:** DarkNote is the author's own prior work, declared as the baseline (§1.1); the assessed contribution is the premium feature built within the assessment window.
 
 ## 10. Acceptance criteria / definition of done

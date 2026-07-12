@@ -1,7 +1,7 @@
 // premium tier policy for DarkNote notes (this is the new bit i built).
 // a note comes out free or premium depending on what it asks for, and the
 // premium ones get capped by hard ceilings the server enforces no matter what
-// the client sends (FR1, FR6, NFR2).
+// the client sends (FR5, FR9, NFR2).
 
 export type Tier = 'free' | 'premium';
 
@@ -32,7 +32,7 @@ export const TIER_LIMITS = {
 export const PRICING = {
   asset: 'USDC',
   baseUsdc: Number(process.env.PREMIUM_BASE_USDC ?? 0.5),
-  // Per-feature surcharges (FR10).
+  // Per-feature surcharges (FR12).
   manyReadsUsdc: Number(process.env.PREMIUM_MANY_READS_USDC ?? 0.25),
   largePayloadUsdc: Number(process.env.PREMIUM_LARGE_PAYLOAD_USDC ?? 0.25),
   retentionUsdc: Number(process.env.PREMIUM_RETENTION_USDC ?? 0.5),
@@ -47,7 +47,7 @@ const wantsRetention = (req: NoteCapabilities): boolean => req.guaranteedRetenti
 
 const explicitlyPremium = (req: NoteCapabilities): boolean => req.premiumRequested === true;
 
-// FR1: a note is premium if it asks for anything above the free tier.
+// FR5: a note is premium if it asks for anything above the free tier.
 export function classify(req: NoteCapabilities): Tier {
   return wantsMultiRead(req) || wantsLargePayload(req) || wantsRetention(req) || explicitlyPremium(req)
     ? 'premium'
@@ -59,7 +59,7 @@ export interface EnforceResult {
   error?: string;
 }
 
-// FR6 / NFR2: enforce the tier ceilings on the server. free notes have to stay
+// FR9 / NFR2: enforce the tier ceilings on the server. free notes have to stay
 // inside the free limits, premium ones can't blow past the premium ceilings. if
 // a client tries to inflate the numbers in the body we catch it here instead of
 // trusting it.
@@ -80,7 +80,7 @@ export function enforce(req: NoteCapabilities, tier: Tier): EnforceResult {
   return { ok: true };
 }
 
-// FR10: work out the price from whatever capabilities the note actually uses.
+// FR12: work out the price from whatever capabilities the note actually uses.
 export function priceFor(req: NoteCapabilities): number {
   let price = PRICING.baseUsdc;
   if (typeof req.maxReads === 'number' && req.maxReads > 10) price += PRICING.manyReadsUsdc;

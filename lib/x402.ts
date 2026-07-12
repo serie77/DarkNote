@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 // little helpers for the x402 side of unlocking a premium note.
 // when someone hasn't paid yet we answer with a 402 plus a machine-readable
 // "accepts" blob (scheme/network/asset/amount/payTo) and a nonce that ties a
-// payment to exactly one unlock (FR3, NFR5).
+// payment to exactly one unlock (FR6, NFR5).
 
 export const X402_CONFIG = {
   asset: 'USDC',

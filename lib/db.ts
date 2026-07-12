@@ -14,7 +14,7 @@ export interface Note {
   maxReads: number | null;
   currentReads: number;
   // Premium feature (assessed increment): premium notes are exempt from the
-  // periodic free-note cleanup so their retention is guaranteed (FR7).
+  // periodic free-note cleanup so their retention is guaranteed (FR10).
   premium: boolean;
 }
 
@@ -187,7 +187,7 @@ export function deleteNote(id: string): boolean {
 /**
  * Delete old notes (cleanup task - run periodically)
  * Deletes free notes older than 30 days. Premium notes are exempt so their
- * retention is guaranteed (FR7 — assessed increment).
+ * retention is guaranteed (FR10 — assessed increment).
  */
 export function deleteOldNotes(maxAgeMs: number = 30 * 24 * 60 * 60 * 1000): number {
   const db = getDb();

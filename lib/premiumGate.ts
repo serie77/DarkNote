@@ -31,23 +31,23 @@ export async function evaluatePremiumGate({
   store,
   facilitator,
 }: GateDeps): Promise<GateDecision> {
-  const tier = classify(body); // FR1
+  const tier = classify(body); // FR5
 
   if (tier === 'free') {
     const check = enforce(body, 'free');
     // if it's free it's already inside the free limits, so this is just
     // belt-and-braces.
     if (!check.ok) return { status: 400, error: check.error! };
-    return { action: 'create', premium: 0 }; // FR2: free notes never pay
+    return { action: 'create', premium: 0 }; // FR5: free notes never pay
   }
 
-  // premium: cap the request BEFORE we take any money (FR6 / NFR2).
+  // premium: cap the request BEFORE we take any money (FR9 / NFR2).
   const ceilings = enforce(body, 'premium');
   if (!ceilings.ok) return { status: 400, error: ceilings.error! };
 
   const price = priceFor(body);
 
-  // FR3: nobody's paid yet, so mint a challenge nonce and hand back the 402.
+  // FR6: nobody's paid yet, so mint a challenge nonce and hand back the 402.
   if (!paymentHeader) {
     const nonce = store.issueChallenge(price);
     return { status: 402, terms: challengeTerms(nonce, price) };
@@ -59,13 +59,13 @@ export async function evaluatePremiumGate({
     return { status: 402, terms: challengeTerms(nonce, price), error: 'Invalid payment.' };
   }
 
-  // FR4: the facilitator has to confirm settlement before we hand anything over.
+  // FR7: the facilitator has to confirm settlement before we hand anything over.
   const settlement = await facilitator.verifyAndSettle(payment, { nonce: payment.nonce, amount: price });
   if (!settlement.settled) {
     return { status: 402, error: 'Payment could not be verified.' };
   }
 
-  // FR5: burn the nonce atomically. replay it or make one up and it unlocks
+  // FR8: burn the nonce atomically. replay it or make one up and it unlocks
   // nothing, so one payment can only ever make one premium note.
   const redeemed = store.redeem(payment.nonce);
   if (!redeemed.ok) {

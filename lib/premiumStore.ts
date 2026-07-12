@@ -8,7 +8,7 @@ import { newNonce } from './x402';
 // the redeem runs inside a synchronous better-sqlite3 transaction, and because
 // that goes start-to-finish without handing the event loop back, two requests
 // can't interleave halfway through it. so one settlement unlocks exactly one
-// note, which is the property i actually care about here (FR5, NFR4).
+// note, which is the property i actually care about here (FR8, NFR4).
 export class PremiumStore {
   private db: Database.Database;
   private redeemTxn: (nonce: string) => { ok: boolean; amount?: number };

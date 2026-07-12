@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { GET } from '../app/api/pricing/route';
 
-// FR8: premium pricing is discoverable before composing a note.
-describe('GET /api/pricing (FR8)', () => {
+// FR12: premium pricing is discoverable before composing a note.
+describe('GET /api/pricing (FR12)', () => {
   it('publishes tiers, ceilings and x402 settlement details', async () => {
     const res = await GET();
     const body = await res.json();

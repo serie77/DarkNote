@@ -23,7 +23,7 @@ async function challenge(body: object) {
 }
 
 describe('evaluatePremiumGate', () => {
-  it('creates a free note with no payment (FR2)', async () => {
+  it('creates a free note with no payment (FR5)', async () => {
     const res = await evaluatePremiumGate({
       body: { ciphertext: 'hello' },
       paymentHeader: null,
@@ -33,14 +33,14 @@ describe('evaluatePremiumGate', () => {
     expect(res).toEqual({ action: 'create', premium: 0 });
   });
 
-  it('returns 402 with self-describing terms for a premium request (FR3, NFR5)', async () => {
+  it('returns 402 with self-describing terms for a premium request (FR6, NFR5)', async () => {
     const term = await challenge({ maxReads: 5 });
     expect(term).toMatchObject({ scheme: 'exact', network: 'solana', asset: 'USDC' });
     expect(term.amount).toBeGreaterThan(0);
     expect(term.nonce).toBeTruthy();
   });
 
-  it('rejects an unverified payment and creates nothing (FR4)', async () => {
+  it('rejects an unverified payment and creates nothing (FR7)', async () => {
     const term = await challenge({ maxReads: 5 });
     const res = await evaluatePremiumGate({
       body: { maxReads: 5 },
@@ -51,7 +51,7 @@ describe('evaluatePremiumGate', () => {
     expect(res).toMatchObject({ status: 402 });
   });
 
-  it('rejects an underpaid settlement (FR4)', async () => {
+  it('rejects an underpaid settlement (FR7)', async () => {
     const term = await challenge({ maxReads: 5 });
     const res = await evaluatePremiumGate({
       body: { maxReads: 5 },
@@ -62,7 +62,7 @@ describe('evaluatePremiumGate', () => {
     expect(res).toMatchObject({ status: 402 });
   });
 
-  it('creates a premium note after a verified payment (FR4)', async () => {
+  it('creates a premium note after a verified payment (FR7)', async () => {
     const term = await challenge({ maxReads: 5 });
     const res = await evaluatePremiumGate({
       body: { maxReads: 5 },
@@ -73,7 +73,7 @@ describe('evaluatePremiumGate', () => {
     expect(res).toEqual({ action: 'create', premium: 1 });
   });
 
-  it('never unlocks a second note from a replayed settlement (FR5)', async () => {
+  it('never unlocks a second note from a replayed settlement (FR8)', async () => {
     const term = await challenge({ maxReads: 5 });
     const paid = header({ nonce: term.nonce, amount: term.amount, valid: true });
 
@@ -84,7 +84,7 @@ describe('evaluatePremiumGate', () => {
     expect(replay).toMatchObject({ status: 402 });
   });
 
-  it('rejects a request beyond premium ceilings before taking payment (FR6, NFR2)', async () => {
+  it('rejects a request beyond premium ceilings before taking payment (FR9, NFR2)', async () => {
     const res = await evaluatePremiumGate({
       body: { maxReads: 999_999 },
       paymentHeader: null,

@@ -3,7 +3,7 @@ import { classify, enforce, priceFor, TIER_LIMITS } from '../lib/premium';
 
 const big = (n: number) => 'x'.repeat(n);
 
-describe('classify (FR1)', () => {
+describe('classify (FR5)', () => {
   it('treats a plain single-read note as free', () => {
     expect(classify({ ciphertext: 'hello' })).toBe('free');
     expect(classify({ ciphertext: 'hello', maxReads: 1 })).toBe('free');
@@ -20,7 +20,7 @@ describe('classify (FR1)', () => {
   });
 });
 
-describe('enforce ceilings (FR6, NFR2)', () => {
+describe('enforce ceilings (FR9, NFR2)', () => {
   it('bounds a free request to free limits', () => {
     expect(enforce({ ciphertext: 'hi' }, 'free').ok).toBe(true);
     expect(enforce({ maxReads: 5 }, 'free').ok).toBe(false);
@@ -35,7 +35,7 @@ describe('enforce ceilings (FR6, NFR2)', () => {
   });
 });
 
-describe('priceFor (FR10)', () => {
+describe('priceFor (FR12)', () => {
   it('prices per requested capability', () => {
     expect(priceFor({ maxReads: 5 })).toBe(0.5); // base only
     expect(priceFor({ maxReads: 20 })).toBe(0.75); // +many reads

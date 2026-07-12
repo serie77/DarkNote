@@ -9,13 +9,13 @@ afterEach(() => {
   store.close();
 });
 
-describe('PremiumStore (FR5, NFR4)', () => {
+describe('PremiumStore (FR8, NFR4)', () => {
   it('redeems an issued nonce exactly once', () => {
     const nonce = store.issueChallenge(0.5);
     expect(store.redeem(nonce)).toEqual({ ok: true, amount: 0.5 });
   });
 
-  it('rejects a replayed nonce (FR5)', () => {
+  it('rejects a replayed nonce (FR8)', () => {
     const nonce = store.issueChallenge(0.5);
     store.redeem(nonce);
     expect(store.redeem(nonce)).toEqual({ ok: false });

@@ -53,15 +53,15 @@ const noteBody = (extra: object = {}) => ({
 
 const b64 = (p: object) => Buffer.from(JSON.stringify(p)).toString('base64');
 
-describe('POST /api/notes premium gate (FR2, FR3, FR9)', () => {
-  it('creates a free note with no payment (FR2)', async () => {
+describe('POST /api/notes premium gate (FR5, FR6, FR11)', () => {
+  it('creates a free note with no payment (FR5)', async () => {
     const res = await post(noteBody());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({ success: true, premium: false });
   });
 
-  it('returns 402 x402 terms for a premium request (FR3)', async () => {
+  it('returns 402 x402 terms for a premium request (FR6)', async () => {
     const res = await post(noteBody({ maxReads: 5 }));
     expect(res.status).toBe(402);
     const body = await res.json();
@@ -86,14 +86,14 @@ describe('POST /api/notes premium gate (FR2, FR3, FR9)', () => {
     expect((await res.json()).premium).toBe(true);
   });
 
-  it('rejects missing fields with a generic message (FR9)', async () => {
+  it('rejects missing fields with a generic message (FR11)', async () => {
     const res = await post({ id: 'x' });
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(typeof body.error).toBe('string');
   });
 
-  it('handles a malformed body without leaking internals (FR9)', async () => {
+  it('handles a malformed body without leaking internals (FR11)', async () => {
     const res = await post('not json at all', {}, true);
     expect([400, 500]).toContain(res.status);
     const text = JSON.stringify(await res.json());

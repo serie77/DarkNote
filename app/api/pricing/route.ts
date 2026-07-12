@@ -3,7 +3,7 @@ import { PRICING, TIER_LIMITS } from '@/lib/premium';
 import { X402_CONFIG } from '@/lib/x402';
 
 /**
- * Premium pricing discovery (FR8). Lets a client learn the tiers, ceilings, and
+ * Premium pricing discovery (FR12). Lets a client learn the tiers, ceilings, and
  * x402 settlement details before composing a premium note.
  */
 export async function GET() {
