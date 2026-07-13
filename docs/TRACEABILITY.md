@@ -25,4 +25,6 @@ FR1–FR4 cover the pre-existing base application (documented context); FR5 onwa
 | NFR4 | — | `premiumStore.test.ts` — 50 concurrent redemptions, exactly one succeeds | A | **pass** | CI |
 | NFR5 | — | `premiumGate.test.ts` — 402 terms self-describing | A | **pass** | CI |
 | NFR6 | — | `nfr6.test.ts` — free path makes zero facilitator calls + latency measurement | A | **pass** | CI |
+| NFR7 | — | full suite runs against the existing SQLite store on Node 20 in CI (`ci.yml`, ubuntu-latest); no new infrastructure | A | **pass** | CI |
+| NFR8 | — | `premiumGate.test.ts` + `nfr6.test.ts` — gate tested end-to-end with an injected mock `Facilitator`; real facilitator swaps behind the same interface | A | **pass** | CI |
 | NFR9 | — | coverage report | A | pending | CI coverage |

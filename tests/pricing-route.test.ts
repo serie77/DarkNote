@@ -7,7 +7,7 @@ describe('GET /api/pricing (FR12)', () => {
     const res = await GET();
     const body = await res.json();
     expect(body.asset).toBe('USDC');
-    expect(body.network).toBe('solana');
+    expect(body.network).toBe('solana-devnet');
     expect(body.payTo).toBeTruthy();
     expect(body.free.price).toBe(0);
     expect(body.premium.maxReads).toBeGreaterThan(body.free.maxReads);

@@ -5,9 +5,12 @@ import { randomUUID } from 'crypto';
 // "accepts" blob (scheme/network/asset/amount/payTo) and a nonce that ties a
 // payment to exactly one unlock (FR6, NFR5).
 
+// The premium tier settles on Solana devnet with devnet (test) USDC. no
+// real-world value moves. The network is stated explicitly in every 402 so a
+// client can never mistake it for a mainnet charge.
 export const X402_CONFIG = {
   asset: 'USDC',
-  network: 'solana',
+  network: 'solana-devnet',
   payTo: process.env.PREMIUM_PAYOUT_ADDRESS ?? 'DarkNotePremiumPayoutAddrPlaceholder1111111',
 } as const;
 

@@ -35,7 +35,7 @@ describe('evaluatePremiumGate', () => {
 
   it('returns 402 with self-describing terms for a premium request (FR6, NFR5)', async () => {
     const term = await challenge({ maxReads: 5 });
-    expect(term).toMatchObject({ scheme: 'exact', network: 'solana', asset: 'USDC' });
+    expect(term).toMatchObject({ scheme: 'exact', network: 'solana-devnet', asset: 'USDC' });
     expect(term.amount).toBeGreaterThan(0);
     expect(term.nonce).toBeTruthy();
   });

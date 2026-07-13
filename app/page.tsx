@@ -105,7 +105,6 @@ export default function Home() {
   const [error, setError] = useState('');
   const [selfDestruct, setSelfDestruct] = useState(false);
   const [maxReads, setMaxReads] = useState<number | null>(null);
-  const [guaranteedRetention, setGuaranteedRetention] = useState(false);
   const [premiumNote, setPremiumNote] = useState(false);
   const [paidReceipt, setPaidReceipt] = useState<{ amount?: number; asset?: string } | null>(null);
   const [payModal, setPayModal] = useState<{
@@ -248,11 +247,11 @@ export default function Home() {
 
 
   // a note is premium (so it needs an x402 payment) if it's over the free
-  // message length, has embedded media in it, is multi-read, wants guaranteed
-  // retention, or was opted in explicitly.
+  // message length, has embedded media in it, is multi-read, or was opted in
+  // explicitly. Guaranteed retention is inherent to the premium tier, not a
+  // separate opt-in: every premium note is kept until read.
   const isPremiumNote =
     premiumNote ||
-    guaranteedRetention ||
     (selfDestruct && (maxReads ?? 1) > 1) ||
     message.length > FREE_MESSAGE_LENGTH ||
     hasMediaEmbed;
@@ -263,8 +262,7 @@ export default function Home() {
   const premiumReasons = [
     message.length > FREE_MESSAGE_LENGTH ? 'long message' : null,
     hasMediaEmbed ? 'media embed' : null,
-    selfDestruct && (maxReads ?? 1) > 1 ? 'multi-read' : null,
-    guaranteedRetention ? 'guaranteed retention' : null,
+    selfDestruct && (maxReads ?? 1) > 1 ? 'multiple reads' : null,
     premiumNote ? 'premium enabled' : null,
   ].filter(Boolean);
   const premiumReasonText = premiumReasons.length ? `Includes ${premiumReasons.join(', ')}.` : '';
@@ -303,7 +301,6 @@ export default function Home() {
     setEmoteOpen(false);
     setEmoteSection(EMOTE_SECTIONS[0].label);
     setRecipientAddress('');
-    setGuaranteedRetention(false);
     setSelfDestruct(false);
     setMaxReads(null);
     setPremiumNote(false);
@@ -391,7 +388,9 @@ export default function Home() {
         recipientAddress,
         selfDestruct,
         maxReads,
-        guaranteedRetention,
+        // retention is a property of the premium tier: every premium note is
+        // exempt from cleanup and kept until read.
+        guaranteedRetention: isPremiumNote,
         premiumRequested: isPremiumNote,
       };
 
@@ -554,7 +553,7 @@ export default function Home() {
             <div className="text-center mb-8">
               <div className="flex items-center justify-center gap-4 mb-4">
                 <img
-                  src="/darknote.png"
+                  src="/logo-monoline.svg"
                   alt="DarkNote"
                   className="w-14 h-14 object-contain filter drop-shadow-[0_0_8px_rgba(168,130,255,0.4)]"
                 />
@@ -725,7 +724,7 @@ export default function Home() {
 
                 {/* Self-Destruct Options */}
                 <div className="mb-5 p-4 bg-black/30 border border-zinc-800 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-gray-400">Self-Destruct</label>
                     <button
                       onClick={() => setSelfDestruct(!selfDestruct)}
@@ -740,6 +739,9 @@ export default function Home() {
                       />
                     </button>
                   </div>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Free. The note is destroyed after it is read.
+                  </p>
 
                   {selfDestruct && (
                     <div>
@@ -758,6 +760,12 @@ export default function Home() {
                       <p className="text-xs text-gray-500 mt-2">
                         {maxReads ? `Note will self-destruct after ${maxReads} read(s)` : 'Note will self-destruct after being decrypted once'}
                       </p>
+                      {(maxReads ?? 1) > 1 && (
+                        <div className="mt-2 flex items-center gap-1.5 text-xs text-purple-300">
+                          <span>⭐</span>
+                          <span>Allowing more than one read is a premium capability, unlocked with an x402 micropayment.</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -783,32 +791,12 @@ export default function Home() {
                       />
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mb-3">
+                  <p className="text-xs text-gray-500">
                     Unlocks up to {MAX_MESSAGE_LENGTH.toLocaleString()} characters (free notes stop
-                    at {FREE_MESSAGE_LENGTH.toLocaleString()}) and GIF/image embeds. Paid with a
-                    small x402 micropayment when you send.
+                    at {FREE_MESSAGE_LENGTH.toLocaleString()}), GIF/image embeds, and guaranteed
+                    retention (kept until read, never expired early). Paid with a small x402
+                    micropayment when you send.
                   </p>
-                  <div className="border-t border-zinc-800 pt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-medium text-gray-400">Guaranteed retention</label>
-                      <button
-                        aria-label="Toggle guaranteed retention"
-                        onClick={() => setGuaranteedRetention(!guaranteedRetention)}
-                        className={`relative w-11 h-6 rounded-full transition ${
-                          guaranteedRetention ? 'bg-purple-500' : 'bg-zinc-700'
-                        }`}
-                      >
-                        <div
-                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition transform ${
-                            guaranteedRetention ? 'translate-x-5' : ''
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      The note is kept until it is read, never expired early.
-                    </p>
-                  </div>
                 </div>
 
                 {/* Error */}
@@ -874,7 +862,8 @@ export default function Home() {
                       </button>
                     </div>
                     <p className="mt-2 text-[10px] text-gray-600">
-                      Mock facilitator, no real funds move. A live x402 facilitator settles real USDC with no code change.
+                      Settles in devnet USDC (test tokens, no real-world value). The mock facilitator
+                      moves nothing; the live path signs a real devnet-USDC transfer with no code change.
                     </p>
                   </div>
                 )}

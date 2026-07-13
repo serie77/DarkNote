@@ -65,7 +65,7 @@ describe('POST /api/notes premium gate (FR5, FR6, FR11)', () => {
     const res = await post(noteBody({ maxReads: 5 }));
     expect(res.status).toBe(402);
     const body = await res.json();
-    expect(body.accepts[0]).toMatchObject({ asset: 'USDC', network: 'solana' });
+    expect(body.accepts[0]).toMatchObject({ asset: 'USDC', network: 'solana-devnet' });
     expect(body.accepts[0].nonce).toBeTruthy();
   });
 
