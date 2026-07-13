@@ -26,7 +26,10 @@ export const metadata: Metadata = {
   title: "DarkNote - Encrypted Messages on Solana",
   description: "Send end-to-end encrypted, self-destructing messages addressed to any Solana wallet.",
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/logo-monoline.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '48x48' },
+    ],
     shortcut: '/icon.png',
     apple: '/icon.png',
   },
@@ -37,10 +40,10 @@ export const metadata: Metadata = {
     siteName: 'DarkNote',
     images: [
       {
-        url: '/darknote.png',
-        width: 512,
-        height: 512,
-        alt: 'DarkNote Logo',
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'DarkNote',
       },
     ],
     locale: 'en_US',

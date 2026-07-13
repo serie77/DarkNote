@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "You received an encrypted message",
     description: "Connect your Solana wallet to decrypt this private message on DarkNote.",
-    images: ["/darknote.png"],
+    images: ["/og.png"],
   },
 };
 

@@ -210,7 +210,7 @@ export default function ViewNotePage({ params }: { params: Promise<{ id: string 
             <Link href="/" className="inline-block">
               <div className="flex items-center justify-center gap-4 mb-3">
                 <img
-                  src="/darknote.png"
+                  src="/logo-monoline.svg"
                   alt="DarkNote"
                   className="w-12 h-12 object-contain filter drop-shadow-[0_0_8px_rgba(168,130,255,0.4)]"
                 />

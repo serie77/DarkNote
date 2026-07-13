@@ -117,7 +117,7 @@ export default function KeysPage() {
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-4 mb-3">
             <img
-              src="/darknote.png"
+              src="/logo-monoline.svg"
               alt="DarkNote"
               className="w-12 h-12 object-contain filter drop-shadow-[0_0_8px_rgba(168,130,255,0.4)]"
             />

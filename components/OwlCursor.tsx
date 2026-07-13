@@ -60,7 +60,7 @@ export default function OwlCursor() {
 
     // Load owl image
     const img = new Image();
-    img.src = '/darknote.png';
+    img.src = '/owl.png';
     img.onload = () => {
       owlImgRef.current = img;
     };

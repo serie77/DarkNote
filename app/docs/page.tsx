@@ -94,7 +94,7 @@ export default function DocsPage() {
         <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-zinc-950/95 backdrop-blur-xl border-r border-zinc-800 z-40 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
           <div className="p-6">
             <Link href="/" className="flex items-center gap-3 mb-8">
-              <img src="/darknote.png" alt="DarkNote" className="w-8 h-8 object-contain" />
+              <img src="/logo-monoline.svg" alt="DarkNote" className="w-8 h-8 object-contain" />
               <span className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-orbitron)' }}>
                 DOCS
               </span>

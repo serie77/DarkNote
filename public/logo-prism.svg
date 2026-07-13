@@ -1,0 +1,18 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DarkNote owl">
+  <defs>
+    <linearGradient id="dnPrism" x1="34" y1="24" x2="86" y2="98" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c8a4ff"/>
+      <stop offset="1" stop-color="#7a49f0"/>
+    </linearGradient>
+  </defs>
+  <polygon points="60,9 103,34 103,84 60,109 17,84 17,34" fill="none" stroke="url(#dnPrism)" stroke-opacity="0.32" stroke-width="2.5"/>
+  <path d="M40 40 L36 25 L51 37 Z" fill="url(#dnPrism)"/>
+  <path d="M80 40 L84 25 L69 37 Z" fill="url(#dnPrism)"/>
+  <path d="M60 33 C 43 33, 33 46, 33 63 C 33 85, 46 97, 60 97 C 74 97, 87 85, 87 63 C 87 46, 77 33, 60 33 Z" fill="url(#dnPrism)"/>
+  <circle cx="50" cy="58" r="9" fill="#241539"/>
+  <circle cx="70" cy="58" r="9" fill="#241539"/>
+  <circle cx="50" cy="58" r="4" fill="#e6d4ff"/>
+  <circle cx="70" cy="58" r="4" fill="#e6d4ff"/>
+  <path d="M56 66 L64 66 L60 74 Z" fill="#241539"/>
+  <path d="M45 80 Q60 89 75 80" fill="none" stroke="#241539" stroke-width="3.2" stroke-linecap="round"/>
+</svg>
